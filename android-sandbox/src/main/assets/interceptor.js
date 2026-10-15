@@ -6,16 +6,21 @@
     window.__INSTACONTROLLER_INJECTED__ = true;
     console.log("[InstaController] Interceptor initialized");
 
-    // 1. Masquage CSS d'urgence pour tout conteneur résiduel
+    // 1. Masquage CSS d'urgence pour tout conteneur résiduel et bannières native app
     function injectEmergencyStyles() {
         if (document.getElementById("instacontroller-styles")) return;
         const style = document.createElement("style");
         style.id = "instacontroller-styles";
         style.textContent = `
-            /* Masquage des bannières d'installation de l'application native */
+            /* Masquage des bannières et boutons d'installation/ouverture de l'application native */
             [data-testid="app-upsell-modal"],
-            div[role="dialog"] button:has(svg),
             .app-upsell,
+            a[href^="intent:"],
+            a[href^="instagram:"],
+            a[href^="market:"],
+            /* Boutons d'incitation à l'application native */
+            div[role="dialog"] button:has(svg),
+            
             /* Masquage de secours des éléments avec badge sponsorisé */
             article:has(a[href*="/about/ads"]),
             article:has(span:contains("Sponsored")),
@@ -31,7 +36,20 @@
         document.addEventListener("DOMContentLoaded", injectEmergencyStyles);
     }
 
-    // 2. Interception de window.fetch
+    // 2. Blocage JS des clics vers les schémas intent://, instagram://, market://
+    document.addEventListener("click", function(e) {
+        const anchor = e.target.closest ? e.target.closest("a") : null;
+        if (anchor && anchor.href) {
+            const href = anchor.href.toLowerCase();
+            if (href.startsWith("intent:") || href.startsWith("instagram:") || href.startsWith("market:")) {
+                console.log("[InstaController] JS blocked click to native scheme:", anchor.href);
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }
+    }, true);
+
+    // 3. Interception de window.fetch
     if (window.fetch) {
         const originalFetch = window.fetch;
         window.fetch = async function(...args) {
@@ -82,7 +100,7 @@
         };
     }
 
-    // 3. Interception de XMLHttpRequest (XHR)
+    // 4. Interception de XMLHttpRequest (XHR)
     const originalXHROpen = XMLHttpRequest.prototype.open;
     const originalXHRSend = XMLHttpRequest.prototype.send;
 
@@ -140,5 +158,5 @@
         return originalXHRSend.apply(this, arguments);
     };
 
-    console.log("[InstaController] Interceptor hooks active on fetch and XHR");
+    console.log("[InstaController] Interceptor hooks active on fetch, XHR and scheme navigation");
 })();

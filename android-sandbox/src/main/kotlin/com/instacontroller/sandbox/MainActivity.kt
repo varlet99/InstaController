@@ -5,6 +5,8 @@ import android.app.AlertDialog
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.view.View
+import android.net.Uri
+import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -78,9 +80,12 @@ class MainActivity : AppCompatActivity(), InstaBridge.StatsListener {
         settings.useWideViewPort = true
         settings.loadWithOverviewMode = true
 
-        // User-Agent Chrome mobile Android moderne
-        settings.userAgentString = "Mozilla/5.0 (Linux; Android 13; SM-A136W Build/TP1A.220624.014; wv) " +
-                "AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/128.0.6613.127 Mobile Safari/537.36"
+        // Camouflage du User-Agent : retrait de '; wv' et 'Version/4.0' pour se comporter comme Chrome Mobile
+        val rawUa = settings.userAgentString
+        settings.userAgentString = rawUa
+            .replace("; wv", "")
+            .replace(Regex("Version/\\d+\\.\\d+\\s*"), "")
+        Log.d("InstaController", "[WebView] Camouflaged User-Agent: ${settings.userAgentString}")
 
         val cookieManager = CookieManager.getInstance()
         cookieManager.setAcceptCookie(true)
@@ -91,6 +96,28 @@ class MainActivity : AppCompatActivity(), InstaBridge.StatsListener {
 
         webView.webChromeClient = WebChromeClient()
         webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                val url = request?.url ?: return false
+                val scheme = url.scheme?.lowercase() ?: ""
+                if (scheme != "http" && scheme != "https") {
+                    Log.d("InstaController", "[WebView] Blocked non-HTTP scheme redirect: $url")
+                    return true // Bloque intent://, instagram://, market://
+                }
+                return false
+            }
+
+            @Deprecated("Deprecated in Java")
+            override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+                if (url == null) return false
+                val uri = Uri.parse(url)
+                val scheme = uri.scheme?.lowercase() ?: ""
+                if (scheme != "http" && scheme != "https") {
+                    Log.d("InstaController", "[WebView] Blocked non-HTTP scheme redirect (legacy): $url")
+                    return true
+                }
+                return false
+            }
+
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
                 injectInterceptor()

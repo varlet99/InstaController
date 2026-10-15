@@ -1,13 +1,13 @@
 //
 //  main.m
-//  InstaController-iOS Host Application with Native Floating HUD & Synchronous WebKit Bridge
+//  InstaController-iOS Host Application with v2.0 In-Process Filter & Native Floating HUD
 //
 
 #import <UIKit/UIKit.h>
 #import <WebKit/WebKit.h>
 #import "InstaControllerFilter.h"
 
-@interface ViewController : UIViewController <WKNavigationDelegate, WKUIDelegate>
+@interface ViewController : UIViewController <WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler>
 @property (strong, nonatomic) WKWebView *webView;
 @property (strong, nonatomic) UIVisualEffectView *hudView;
 @property (strong, nonatomic) UILabel *hudLabel;
@@ -20,11 +20,28 @@
     [super viewDidLoad];
     self.view.backgroundColor = [UIColor blackColor];
 
-    // 1. Configuration de la WKWebView avec injection au démarrage
+    // 1. Purge immédiate des Service Workers et des caches WebKit (conservation des cookies de session)
+    NSSet *types = [NSSet setWithObjects:
+        WKWebsiteDataTypeServiceWorkerRegistrations,
+        WKWebsiteDataTypeDiskCache,
+        WKWebsiteDataTypeMemoryCache,
+        WKWebsiteDataTypeOfflineWebApplicationCache, nil];
+    [[WKWebsiteDataStore defaultDataStore] removeDataOfTypes:types
+                                               modifiedSince:[NSDate distantPast]
+                                           completionHandler:^{
+        NSLog(@"[InstaController-iOS v2.0] Service Workers et caches WebKit purgés avec succès.");
+    }];
+
+    // 2. Configuration de la WKWebView
     WKWebViewConfiguration *config = [[WKWebViewConfiguration alloc] init];
     config.allowsInlineMediaPlayback = YES;
 
     WKUserContentController *userContentController = [[WKUserContentController alloc] init];
+    
+    // Handler asynchrone ultra-léger pour le HUD natif
+    [userContentController addScriptMessageHandler:self name:@"instaController"];
+
+    // Injection universelle de l'intercepteur v2.0 in-process à DocumentStart
     NSString *jsSource = [InstaControllerFilter sharedInterceptionJavaScript];
     WKUserScript *userScript = [[WKUserScript alloc] initWithSource:jsSource
                                                       injectionTime:WKUserScriptInjectionTimeAtDocumentStart
@@ -32,7 +49,7 @@
     [userContentController addUserScript:userScript];
     config.userContentController = userContentController;
 
-    // 2. Initialisation de la WKWebView
+    // 3. Initialisation de la WKWebView
     self.webView = [[WKWebView alloc] initWithFrame:self.view.bounds configuration:config];
     self.webView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     self.webView.navigationDelegate = self;
@@ -41,10 +58,10 @@
     self.webView.customUserAgent = @"Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 280.0.0.18.112";
     [self.view addSubview:self.webView];
 
-    // 3. Construction du Panneau HUD Flottant Natif iOS
+    // 4. Construction du Panneau HUD Flottant Natif v2.0
     [self setupNativeFloatingHUD];
 
-    // 4. Chargement initial forcé sur le flux Abonnements
+    // 5. Chargement initial forcé sur le flux Abonnements chronologique
     NSURL *url = [NSURL URLWithString:@"https://www.instagram.com/?variant=following"];
     NSURLRequest *req = [NSURLRequest requestWithURL:url];
     [self.webView loadRequest:req];
@@ -65,12 +82,12 @@
     self.statusDot.layer.cornerRadius = 4.0;
     self.statusDot.backgroundColor = [UIColor colorWithRed:0.2 green:0.85 blue:0.4 alpha:1.0];
 
-    // Label de statut
+    // Label de statut avec mention explicite v2.0
     self.hudLabel = [[UILabel alloc] init];
     self.hudLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.hudLabel.textColor = [UIColor whiteColor];
     self.hudLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-    self.hudLabel.text = @"🛡️ InstaController : 0 pub | 0 story";
+    self.hudLabel.text = @"v2.0 🛡️ Pubs : 0 | Stories : 0";
 
     UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[self.statusDot, self.hudLabel]];
     stack.translatesAutoresizingMaskIntoConstraints = NO;
@@ -105,7 +122,7 @@
     [feedback impactOccurred];
 
     NSString *prevText = self.hudLabel.text;
-    self.hudLabel.text = @"✅ 100% Sans Pub & Filtré";
+    self.hudLabel.text = @"v2.0 ✅ Actif - 100% In-Process";
     self.statusDot.backgroundColor = [UIColor colorWithRed:0.0 green:0.95 blue:0.5 alpha:1.0];
 
     [UIView animateWithDuration:0.2 animations:^{
@@ -123,9 +140,8 @@
     dispatch_async(dispatch_get_main_queue(), ^{
         NSInteger ads = [InstaControllerFilter totalAdsBlocked];
         NSInteger stories = [InstaControllerFilter totalStoriesSorted];
-        self.hudLabel.text = [NSString stringWithFormat:@"🛡️ Pubs : %ld | Stories : %ld", (long)ads, (long)stories];
-        
-        // Légère pulsation verte
+        self.hudLabel.text = [NSString stringWithFormat:@"v2.0 🛡️ Pubs : %ld | Stories : %ld", (long)ads, (long)stories];
+
         [UIView animateWithDuration:0.15 animations:^{
             self.statusDot.transform = CGAffineTransformMakeScale(1.3, 1.3);
         } completion:^(BOOL finished) {
@@ -136,7 +152,20 @@
     });
 }
 
-#pragma mark - WKUIDelegate (Pont Synchrone JS <-> Native Filter)
+#pragma mark - WKScriptMessageHandler (Réception Asynchrone Ultra-Rapide)
+
+- (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(WKScriptMessage *)message {
+    if ([message.name isEqualToString:@"instaController"] && [message.body isKindOfClass:[NSDictionary class]]) {
+        NSDictionary *dict = (NSDictionary *)message.body;
+        NSInteger ads = [dict[@"ads"] integerValue];
+        NSInteger stories = [dict[@"stories"] integerValue];
+        if (ads > 0) [InstaControllerFilter incrementAdsBlocked:ads];
+        if (stories > 0) [InstaControllerFilter incrementStoriesSorted:stories];
+        [self updateHUD];
+    }
+}
+
+#pragma mark - WKUIDelegate
 
 - (void)webView:(WKWebView *)webView
     runJavaScriptTextInputPanelWithPrompt:(NSString *)prompt
@@ -144,39 +173,6 @@
     initiatedByFrame:(WKFrameInfo *)frame
     completionHandler:(void (^)(NSString * _Nullable result))completionHandler
 {
-    if ([prompt isEqualToString:@"__INSTACONTROLLER_FILTER_TIMELINE__"]) {
-        NSString *cleaned = [InstaControllerFilter processTimelineJsonString:defaultText];
-        [self updateHUD];
-        completionHandler(cleaned);
-        return;
-    }
-
-    if ([prompt isEqualToString:@"__INSTACONTROLLER_FILTER_STORIES__"]) {
-        NSString *cleaned = [InstaControllerFilter processStoriesJsonString:defaultText];
-        [self updateHUD];
-        completionHandler(cleaned);
-        return;
-    }
-
-    if ([prompt isEqualToString:@"__INSTACONTROLLER_REPORT_METRICS__"]) {
-        if (defaultText && defaultText.length > 0) {
-            NSData *data = [defaultText dataUsingEncoding:NSUTF8StringEncoding];
-            if (data) {
-                NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
-                if ([dict isKindOfClass:[NSDictionary class]]) {
-                    NSInteger adsDelta = [dict[@"adsDelta"] integerValue];
-                    NSInteger storiesDelta = [dict[@"storiesDelta"] integerValue];
-                    if (adsDelta > 0) [InstaControllerFilter incrementAdsBlocked:adsDelta];
-                    if (storiesDelta > 0) [InstaControllerFilter incrementStoriesSorted:storiesDelta];
-                    [self updateHUD];
-                }
-            }
-        }
-        completionHandler(@"OK");
-        return;
-    }
-
-    // Gestion standard pour tout prompt éventuel du site
     completionHandler(nil);
 }
 

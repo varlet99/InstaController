@@ -1,9 +1,8 @@
 {
   "apk_analysis": {
     "apk_path": "/Users/charlesrivest/Downloads/NoInsta/apk_workspace/instagram_patched.apk",
-    "apk_size_bytes": 146490962,
+    "apk_size_bytes": 147486290,
     "dex_files_scanned": [
-      "classes.dex",
       "classes10.dex",
       "classes11.dex",
       "classes12.dex",
@@ -19,13 +18,14 @@
       "classes21.dex",
       "classes22.dex",
       "classes23.dex",
-      "classes3.dex",
       "classes4.dex",
-      "classes5.dex",
       "classes6.dex",
       "classes7.dex",
       "classes8.dex",
       "classes9.dex",
+      "classes.dex",
+      "classes3.dex",
+      "classes5.dex",
       "classes24.dex"
     ],
     "anchors_found": {
@@ -39,10 +39,10 @@
       "is_sponsored": {
         "occurrences_in_dex": 6,
         "dex_files": [
-          "classes.dex",
           "classes14.dex",
           "classes15.dex",
           "classes2.dex",
+          "classes.dex",
           "classes5.dex",
           "classes24.dex"
         ]
@@ -58,21 +58,21 @@
         "occurrences_in_dex": 6,
         "dex_files": [
           "classes2.dex",
-          "classes3.dex",
-          "classes5.dex",
           "classes6.dex",
           "classes7.dex",
+          "classes3.dex",
+          "classes5.dex",
           "classes24.dex"
         ]
       },
       "feed_items": {
         "occurrences_in_dex": 7,
         "dex_files": [
-          "classes.dex",
           "classes11.dex",
           "classes12.dex",
           "classes15.dex",
           "classes16.dex",
+          "classes.dex",
           "classes5.dex",
           "classes24.dex"
         ]
@@ -80,29 +80,29 @@
       "media_or_ad": {
         "occurrences_in_dex": 9,
         "dex_files": [
-          "classes.dex",
           "classes11.dex",
           "classes15.dex",
           "classes2.dex",
           "classes22.dex",
-          "classes3.dex",
           "classes4.dex",
           "classes6.dex",
+          "classes.dex",
+          "classes3.dex",
           "classes24.dex"
         ]
       },
       "suggested_users": {
         "occurrences_in_dex": 10,
         "dex_files": [
-          "classes.dex",
           "classes10.dex",
           "classes11.dex",
           "classes15.dex",
           "classes19.dex",
           "classes2.dex",
           "classes4.dex",
-          "classes5.dex",
           "classes7.dex",
+          "classes.dex",
+          "classes5.dex",
           "classes24.dex"
         ]
       }

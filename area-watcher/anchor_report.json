@@ -1,0 +1,176 @@
+{
+  "rea_status": {
+    "available": true,
+    "version": "6.5.0",
+    "tools_count": 207,
+    "healthy": true
+  },
+  "apk_analysis": {
+    "apk_path": "android-sandbox/build/outputs/apk/debug/android-sandbox-debug.apk",
+    "apk_size_bytes": 5843582,
+    "dex_files_scanned": [
+      "classes.dex",
+      "classes3.dex",
+      "classes4.dex",
+      "classes2.dex"
+    ],
+    "anchors_found": {
+      "reels_tray": {
+        "occurrences_in_dex": 1,
+        "dex_files": [
+          "classes2.dex"
+        ]
+      },
+      "is_sponsored": {
+        "occurrences_in_dex": 1,
+        "dex_files": [
+          "classes2.dex"
+        ]
+      },
+      "ranked_position": {
+        "occurrences_in_dex": 1,
+        "dex_files": [
+          "classes2.dex"
+        ]
+      },
+      "netego_type": {
+        "occurrences_in_dex": 1,
+        "dex_files": [
+          "classes2.dex"
+        ]
+      },
+      "feed_items": {
+        "occurrences_in_dex": 2,
+        "dex_files": [
+          "classes4.dex",
+          "classes2.dex"
+        ]
+      },
+      "media_or_ad": {
+        "occurrences_in_dex": 1,
+        "dex_files": [
+          "classes2.dex"
+        ]
+      },
+      "suggested_users": {
+        "occurrences_in_dex": 1,
+        "dex_files": [
+          "classes2.dex"
+        ]
+      }
+    },
+    "anchors_missing": [
+      "xdt_api__v1__feed__timeline__connection",
+      "xdt_api__v1__feed__reels_tray"
+    ],
+    "integrity_score": 77.78
+  },
+  "dir_analysis": {
+    "source_dir": ".",
+    "anchors_found": {
+      "reels_tray": {
+        "files": [
+          "android-sandbox/build/intermediates/assets/debug/mergeDebugAssets/interceptor.js",
+          "android-sandbox/src/main/kotlin/com/instacontroller/sandbox/InstaBridge.kt",
+          "android-sandbox/src/main/kotlin/com/instacontroller/sandbox/MainActivity.kt",
+          "android-sandbox/src/main/assets/interceptor.js",
+          "core-filter/src/test/kotlin/com/instacontroller/core/InstagramFilterTest.kt",
+          "core-filter/src/main/kotlin/com/instacontroller/core/InstagramFilter.kt",
+          "core-filter/src/main/kotlin/com/instacontroller/core/StoryScorer.kt"
+        ],
+        "count": 7
+      },
+      "is_sponsored": {
+        "files": [
+          "android-sandbox/build/intermediates/assets/debug/mergeDebugAssets/mock_reels_tray.json",
+          "android-sandbox/build/intermediates/assets/debug/mergeDebugAssets/mock_timeline.json",
+          "android-sandbox/build/intermediates/assets/debug/mergeDebugAssets/interceptor.js",
+          "android-sandbox/src/main/assets/mock_reels_tray.json",
+          "android-sandbox/src/main/assets/mock_timeline.json",
+          "android-sandbox/src/main/assets/interceptor.js",
+          "core-filter/build/resources/test/mock_reels_tray.json",
+          "core-filter/build/resources/test/mock_timeline.json",
+          "core-filter/src/test/resources/mock_reels_tray.json",
+          "core-filter/src/test/resources/mock_timeline.json",
+          "core-filter/src/main/kotlin/com/instacontroller/core/InstagramFilter.kt"
+        ],
+        "count": 11
+      },
+      "ranked_position": {
+        "files": [
+          "android-sandbox/build/intermediates/assets/debug/mergeDebugAssets/mock_reels_tray.json",
+          "android-sandbox/src/main/assets/mock_reels_tray.json",
+          "core-filter/build/resources/test/mock_reels_tray.json",
+          "core-filter/src/test/resources/mock_reels_tray.json",
+          "core-filter/src/test/kotlin/com/instacontroller/core/InstagramFilterTest.kt",
+          "core-filter/src/main/kotlin/com/instacontroller/core/InstagramFilter.kt"
+        ],
+        "count": 6
+      },
+      "netego_type": {
+        "files": [
+          "android-sandbox/build/intermediates/assets/debug/mergeDebugAssets/mock_reels_tray.json",
+          "android-sandbox/build/intermediates/assets/debug/mergeDebugAssets/mock_timeline.json",
+          "android-sandbox/build/intermediates/assets/debug/mergeDebugAssets/interceptor.js",
+          "android-sandbox/src/main/assets/mock_reels_tray.json",
+          "android-sandbox/src/main/assets/mock_timeline.json",
+          "android-sandbox/src/main/assets/interceptor.js",
+          "core-filter/build/resources/test/mock_reels_tray.json",
+          "core-filter/build/resources/test/mock_timeline.json",
+          "core-filter/src/test/resources/mock_reels_tray.json",
+          "core-filter/src/test/resources/mock_timeline.json",
+          "core-filter/src/main/kotlin/com/instacontroller/core/InstagramFilter.kt"
+        ],
+        "count": 11
+      },
+      "feed_items": {
+        "files": [
+          "android-sandbox/build/intermediates/assets/debug/mergeDebugAssets/mock_timeline.json",
+          "android-sandbox/build/intermediates/assets/debug/mergeDebugAssets/interceptor.js",
+          "android-sandbox/src/main/kotlin/com/instacontroller/sandbox/InstaBridge.kt",
+          "android-sandbox/src/main/assets/mock_timeline.json",
+          "android-sandbox/src/main/assets/interceptor.js",
+          "core-filter/build/resources/test/mock_timeline.json",
+          "core-filter/src/test/resources/mock_timeline.json",
+          "core-filter/src/test/kotlin/com/instacontroller/core/InstagramFilterTest.kt",
+          "core-filter/src/main/kotlin/com/instacontroller/core/InstagramFilter.kt"
+        ],
+        "count": 9
+      },
+      "media_or_ad": {
+        "files": [
+          "android-sandbox/build/intermediates/assets/debug/mergeDebugAssets/mock_timeline.json",
+          "android-sandbox/src/main/assets/mock_timeline.json",
+          "core-filter/build/resources/test/mock_timeline.json",
+          "core-filter/src/test/resources/mock_timeline.json",
+          "core-filter/src/test/kotlin/com/instacontroller/core/InstagramFilterTest.kt",
+          "core-filter/src/main/kotlin/com/instacontroller/core/InstagramFilter.kt"
+        ],
+        "count": 6
+      },
+      "suggested_users": {
+        "files": [
+          "android-sandbox/build/intermediates/assets/debug/mergeDebugAssets/mock_timeline.json",
+          "android-sandbox/build/intermediates/assets/debug/mergeDebugAssets/interceptor.js",
+          "android-sandbox/src/main/assets/mock_timeline.json",
+          "android-sandbox/src/main/assets/interceptor.js",
+          "core-filter/build/resources/test/mock_timeline.json",
+          "core-filter/src/test/resources/mock_timeline.json",
+          "core-filter/src/test/kotlin/com/instacontroller/core/InstagramFilterTest.kt",
+          "core-filter/src/main/kotlin/com/instacontroller/core/InstagramFilter.kt"
+        ],
+        "count": 8
+      },
+      "xdt_api__v1__feed__reels_tray": {
+        "files": [
+          "core-filter/src/main/kotlin/com/instacontroller/core/InstagramFilter.kt"
+        ],
+        "count": 1
+      }
+    },
+    "anchors_missing": [
+      "xdt_api__v1__feed__timeline__connection"
+    ],
+    "integrity_score": 88.89
+  }
+}

@@ -28,45 +28,53 @@ class InstagramFilter(
      * Filtre un JSONObject représentant une réponse timeline.
      */
     fun filterTimeline(root: JSONObject): JSONObject {
-        // Traitement de 'feed_items' (structure classique timeline)
-        if (root.has("feed_items")) {
-            val originalItems = root.getJSONArray("feed_items")
-            val cleanedItems = JSONArray()
-            for (i in 0 until originalItems.length()) {
-                val item = originalItems.optJSONObject(i) ?: continue
-                if (!isAdOrAlgorithmicInsertion(item)) {
-                    cleanedItems.put(item)
-                }
-            }
-            root.put("feed_items", cleanedItems)
-        }
+        cleanArrayIfPresent(root, "feed_items")
+        cleanArrayIfPresent(root, "items")
 
-        // Traitement alternatif si les éléments sont sous 'items'
-        if (root.has("items")) {
-            val originalItems = root.getJSONArray("items")
-            val cleanedItems = JSONArray()
-            for (i in 0 until originalItems.length()) {
-                val item = originalItems.optJSONObject(i) ?: continue
-                if (!isAdOrAlgorithmicInsertion(item)) {
-                    cleanedItems.put(item)
+        // Support GraphQL : { "data": { "...": { "edges": [ ... ] } } }
+        val dataObj = root.optJSONObject("data")
+        if (dataObj != null) {
+            val keys = dataObj.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                val subObj = dataObj.optJSONObject(key) ?: continue
+                cleanArrayIfPresent(subObj, "feed_items")
+                cleanArrayIfPresent(subObj, "items")
+
+                if (subObj.has("edges")) {
+                    val originalEdges = subObj.getJSONArray("edges")
+                    val cleanedEdges = JSONArray()
+                    for (i in 0 until originalEdges.length()) {
+                        val edge = originalEdges.optJSONObject(i) ?: continue
+                        val node = edge.optJSONObject("node") ?: edge
+                        if (!isAdOrAlgorithmicInsertion(node)) {
+                            cleanedEdges.put(edge)
+                        }
+                    }
+                    subObj.put("edges", cleanedEdges)
                 }
             }
-            root.put("items", cleanedItems)
         }
 
         return root
     }
 
+    private fun cleanArrayIfPresent(parent: JSONObject, key: String) {
+        if (parent.has(key)) {
+            val original = parent.optJSONArray(key) ?: return
+            val cleaned = JSONArray()
+            for (i in 0 until original.length()) {
+                val item = original.optJSONObject(i) ?: continue
+                if (!isAdOrAlgorithmicInsertion(item)) {
+                    cleaned.put(item)
+                }
+            }
+            parent.put(key, cleaned)
+        }
+    }
+
     /**
      * Filtre et réordonne le JSON brut de l'endpoint des Stories (/api/v1/feed/reels_tray/).
-     *
-     * 1. Supprime les publicités et insertions algorithmiques injectées dans le plateau de stories.
-     * 2. Réordonne le tableau `tray[]` selon le score fourni par le StoryScorer.
-     * 3. Réindexe `ranked_position` pour garantir la cohérence d'affichage côté client.
-     *
-     * @param rawJson Le corps de réponse JSON brut de reels_tray.
-     * @param scorer Scorer optionnel pour surcharger la pondération par défaut.
-     * @return Le JSON filtré et trié sous forme de String.
      */
     fun filterStories(rawJson: String, scorer: StoryScorer = defaultStoryScorer): String {
         val root = JSONObject(rawJson)
@@ -75,14 +83,33 @@ class InstagramFilter(
     }
 
     /**
-     * Filtre et réordonne un JSONObject de type reels_tray.
+     * Filtre et réordonne un JSONObject de type reels_tray ou GraphQL Stories.
      */
     fun filterStories(root: JSONObject, scorer: StoryScorer = defaultStoryScorer): JSONObject {
-        if (!root.has("tray")) {
+        if (root.has("tray")) {
+            val originalTray = root.getJSONArray("tray")
+            root.put("tray", filterAndSortTray(originalTray, scorer))
             return root
         }
 
-        val originalTray = root.getJSONArray("tray")
+        // Support GraphQL Stories : { "data": { "xdt_api__v1__feed__reels_tray": { "tray": [ ... ] } } }
+        val dataObj = root.optJSONObject("data")
+        if (dataObj != null) {
+            val keys = dataObj.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                val subObj = dataObj.optJSONObject(key) ?: continue
+                if (subObj.has("tray")) {
+                    val originalTray = subObj.getJSONArray("tray")
+                    subObj.put("tray", filterAndSortTray(originalTray, scorer))
+                }
+            }
+        }
+
+        return root
+    }
+
+    private fun filterAndSortTray(originalTray: JSONArray, scorer: StoryScorer): JSONArray {
         val validStories = mutableListOf<Pair<JSONObject, Double>>()
 
         for (i in 0 until originalTray.length()) {
@@ -108,8 +135,7 @@ class InstagramFilter(
             sortedTray.put(storyObj)
         }
 
-        root.put("tray", sortedTray)
-        return root
+        return sortedTray
     }
 
     /**
@@ -169,11 +195,15 @@ class InstagramFilter(
             return true
         }
 
-        // Marqueurs additionnels courants
-        if (obj.has("ad_action") || obj.has("sponsored_tags")) {
-            return true
-        }
-
         return false
+    }
+
+    companion object {
+        const val ENDPOINT_REELS_TRAY = "reels_tray"
+        const val ENDPOINT_TIMELINE = "timeline"
+        const val KEY_IS_SPONSORED = "is_sponsored"
+        const val KEY_RANKED_POSITION = "ranked_position"
+        const val KEY_FEED_ITEMS = "feed_items"
+        const val KEY_NETEGO_TYPE = "netego_type"
     }
 }

@@ -8,4 +8,6 @@ build/
 local.properties
 *_aligned.apk
 *_mod_unsigned.apk
+*.apk
+*.idsig
 *.tmp

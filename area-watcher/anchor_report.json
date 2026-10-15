@@ -1,13 +1,15 @@
 {
   "ipa_analysis": {
-    "ipa_path": "/Users/charlesrivest/Downloads/NoInsta/ios-scinsta/InstaController-iOS.ipa",
-    "ipa_size_bytes": 45377,
+    "ipa_path": "/Users/charlesrivest/Downloads/NoInsta/ios-scinsta/Instagram_patched.ipa",
+    "ipa_size_bytes": 132666838,
     "app_bundles_scanned": [
-      "InstaController.app"
+      "Instagram.app"
     ],
     "binaries_scanned": [
-      "Payload/InstaController.app/InstaController",
-      "Payload/InstaController.app/Frameworks/InstaController.dylib"
+      "Payload/Instagram.app/Frameworks/InstaController.dylib",
+      "Payload/Instagram.app/Frameworks/libbhFLEX.dylib",
+      "Payload/Instagram.app/Frameworks/SCInsta.dylib",
+      "Payload/Instagram.app/Instagram"
     ],
     "anchors_found": {
       "reels_tray": true,

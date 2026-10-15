@@ -45,6 +45,7 @@ clang -dynamiclib -arch arm64 \
     -isysroot "${SDK_PATH}" \
     -miphoneos-version-min=14.0 \
     -O2 -fobjc-arc \
+    -install_name "@rpath/InstaController.dylib" \
     -framework Foundation -framework CoreFoundation -framework WebKit \
     -I"${SCRIPT_DIR}" \
     "${SCRIPT_DIR}/InstaControllerFilter.m" \
@@ -65,6 +66,10 @@ TARGET_IPA="$1"
 if [ -z "${TARGET_IPA}" ]; then
     if [ -f "${SCRIPT_DIR}/Instagram.ipa" ]; then
         TARGET_IPA="${SCRIPT_DIR}/Instagram.ipa"
+    elif [ -f "${SCRIPT_DIR}/SCInsta-327.1.6.ipa" ]; then
+        TARGET_IPA="${SCRIPT_DIR}/SCInsta-327.1.6.ipa"
+    elif ls "${SCRIPT_DIR}"/SCInsta*.ipa 1> /dev/null 2>&1; then
+        TARGET_IPA=$(ls "${SCRIPT_DIR}"/SCInsta*.ipa | head -n 1)
     elif [ -f "${ROOT_DIR}/Instagram.ipa" ]; then
         TARGET_IPA="${ROOT_DIR}/Instagram.ipa"
     elif [ -f "${SCRIPT_DIR}/instagram_base.ipa" ]; then
@@ -100,17 +105,35 @@ if [ -n "${TARGET_IPA}" ] && [ -f "${TARGET_IPA}" ]; then
     
     # 1. Intégration optionnelle de SCInsta.dylib officiel si présent
     if [ -f "${SCRIPT_DIR}/SCInsta.dylib" ]; then
-        echo "  -> [SCInsta] Injection de SCInsta.dylib officiel dans Frameworks/..."
+        echo "  -> [SCInsta] Mise à jour de SCInsta.dylib officiel (v1.1.1) dans Frameworks/..."
         cp "${SCRIPT_DIR}/SCInsta.dylib" "${APP_DIR}/Frameworks/SCInsta.dylib"
         ldid -S "${APP_DIR}/Frameworks/SCInsta.dylib"
-        insert_dylib --inplace --all-yes "@executable_path/Frameworks/SCInsta.dylib" "${EXE_PATH}"
+        if ! otool -L "${EXE_PATH}" | grep -q "SCInsta.dylib"; then
+            insert_dylib --inplace --all-yes "@rpath/SCInsta.dylib" "${EXE_PATH}"
+        else
+            echo "  -> [SCInsta] Déjà référencé dans ${EXE_NAME}."
+        fi
     fi
 
     # 2. Intégration de InstaController.dylib
     echo "  -> [InstaController] Injection de InstaController.dylib dans Frameworks/..."
     cp "${SCRIPT_DIR}/InstaController.dylib" "${APP_DIR}/Frameworks/InstaController.dylib"
     ldid -S "${APP_DIR}/Frameworks/InstaController.dylib"
-    insert_dylib --inplace --all-yes "@executable_path/Frameworks/InstaController.dylib" "${EXE_PATH}"
+    if ! otool -L "${EXE_PATH}" | grep -q "InstaController.dylib"; then
+        insert_dylib --inplace --all-yes "@rpath/InstaController.dylib" "${EXE_PATH}"
+    else
+        echo "  -> [InstaController] Déjà référencé dans ${EXE_NAME}."
+    fi
+
+    # 3. Suppression des App Extensions (PlugIns) pour compatibilité Sideloading (évite limite d'App IDs Apple)
+    if [ -d "${APP_DIR}/PlugIns" ]; then
+        echo "  -> [Sideloading] Suppression des extensions PlugIns/ pour compatibilité gratuite..."
+        rm -rf "${APP_DIR}/PlugIns"
+    fi
+
+    # 4. Signature des frameworks et bibliothèques
+    echo "  -> Signature des frameworks avec ldid..."
+    find "${APP_DIR}/Frameworks" -type f \( -name "*.dylib" -o -perm +111 \) -exec ldid -S {} + 2>/dev/null || true
     
     echo "  -> Re-signature du binaire Mach-O principal avec ldid..."
     ldid -S "${EXE_PATH}"
@@ -172,10 +195,7 @@ if [ -n "${CONNECTED_DEVICE}" ]; then
     PAIR_STATUS=$(idevicepair validate 2>&1 || idevicepair pair 2>&1 || true)
     if echo "${PAIR_STATUS}" | grep -q "SUCCESS"; then
         echo "[+] Appairage USB validé et confirmé avec l'iPhone."
-        if command -v ideviceinstaller &>/dev/null; then
-            echo "[*] Déploiement direct via ideviceinstaller..."
-            ideviceinstaller -u "${CONNECTED_DEVICE}" install "${FINAL_IPA}" 2>&1 || echo "[!] L'installation directe sans certificat personnel Apple nécessite Sideloadly (qui gère automatiquement la signature avec votre compte Apple ci-dessous)."
-        fi
+        echo "[*] Sur iOS 18, l'installation requiert la signature personnelle gérée par Sideloadly (ouverture ci-dessous)."
     else
         echo "[!] Note : L'iPhone nécessite la confirmation du dialogue 'Faire confiance à cet ordinateur'."
         echo "    Déverrouillez votre iPhone et appuyez sur 'Faire confiance'."

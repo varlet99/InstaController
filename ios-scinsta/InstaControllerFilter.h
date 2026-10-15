@@ -48,6 +48,32 @@ NS_ASSUME_NONNULL_BEGIN
  */
 + (double)scoreStoryTrayItem:(NSDictionary *)storyTrayItem;
 
+#pragma mark - String Processing Bridge (pour WKWebView & JS)
+
+/**
+ * Filtre une chaîne JSON NSString brute provenant de la Timeline et retourne la chaîne nettoyée.
+ */
++ (NSString *)processTimelineJsonString:(NSString *)jsonString;
+
+/**
+ * Filtre et réordonne une chaîne JSON NSString brute provenant des Stories et retourne la chaîne nettoyée.
+ */
++ (NSString *)processStoriesJsonString:(NSString *)jsonString;
+
+#pragma mark - Live Metrics
+
++ (NSInteger)totalAdsBlocked;
++ (NSInteger)totalStoriesSorted;
++ (void)incrementAdsBlocked:(NSInteger)delta;
++ (void)incrementStoriesSorted:(NSInteger)delta;
+
+#pragma mark - JavaScript Interceptor Asset
+
+/**
+ * Script JavaScript universel injecté dans WKWebView (fetch, XHR, SSR, DOM Observer).
+ */
++ (NSString *)sharedInterceptionJavaScript;
+
 @end
 
 NS_ASSUME_NONNULL_END

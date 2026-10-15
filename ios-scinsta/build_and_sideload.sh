@@ -45,7 +45,7 @@ clang -dynamiclib -arch arm64 \
     -isysroot "${SDK_PATH}" \
     -miphoneos-version-min=14.0 \
     -O2 -fobjc-arc \
-    -framework Foundation -framework CoreFoundation \
+    -framework Foundation -framework CoreFoundation -framework WebKit \
     -I"${SCRIPT_DIR}" \
     "${SCRIPT_DIR}/InstaControllerFilter.m" \
     "${SCRIPT_DIR}/Tweak.m" \
@@ -120,7 +120,9 @@ else
         -miphoneos-version-min=14.0 \
         -O2 -fobjc-arc \
         -framework UIKit -framework WebKit -framework Foundation -framework CoreGraphics \
+        -I"${SCRIPT_DIR}" \
         "${HOST_SRC}/main.m" \
+        "${SCRIPT_DIR}/InstaControllerFilter.m" \
         -o "${BUILD_DIR}/Payload/InstaController.app/InstaController"
         
     cp "${HOST_SRC}/Info.plist" "${BUILD_DIR}/Payload/InstaController.app/Info.plist"
@@ -153,13 +155,13 @@ if [ -n "${CONNECTED_DEVICE}" ]; then
     echo "[+] iPhone détecté en USB !"
     echo "    UDID : ${CONNECTED_DEVICE}"
     
-    # Test d'appairage
-    PAIR_STATUS=$(idevicepair pair 2>&1 || true)
+    # Test d'appairage et validation de session
+    PAIR_STATUS=$(idevicepair validate 2>&1 || idevicepair pair 2>&1 || true)
     if echo "${PAIR_STATUS}" | grep -q "SUCCESS"; then
-        echo "[+] Appairage USB confirmé avec l'iPhone."
+        echo "[+] Appairage USB validé et confirmé avec l'iPhone."
         if command -v ideviceinstaller &>/dev/null; then
-            echo "[*] Tentative d'installation directe via ideviceinstaller..."
-            ideviceinstaller -i "${FINAL_IPA}" || echo "[!] L'installation directe nécessite la signature développeur de votre profil Apple."
+            echo "[*] Déploiement direct via ideviceinstaller..."
+            ideviceinstaller -u "${CONNECTED_DEVICE}" install "${FINAL_IPA}" 2>&1 || echo "[!] L'installation directe sans certificat personnel Apple nécessite Sideloadly (qui gère automatiquement la signature avec votre compte Apple ci-dessous)."
         fi
     else
         echo "[!] Note : L'iPhone nécessite la confirmation du dialogue 'Faire confiance à cet ordinateur'."

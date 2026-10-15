@@ -104,6 +104,10 @@ static const double kScoreSeen = 10.0;
                 [cleaned addObject:item];
             }
         }
+        NSInteger removed = ((NSArray *)arr).count - cleaned.count;
+        if (removed > 0) {
+            [self incrementAdsBlocked:removed];
+        }
         parent[key] = cleaned;
     }
 }
@@ -177,6 +181,14 @@ static const double kScoreSeen = 10.0;
         }
 
         [validStories addObject:item];
+    }
+
+    NSInteger removedAds = originalTray.count - validStories.count;
+    if (removedAds > 0) {
+        [self incrementAdsBlocked:removedAds];
+    }
+    if (validStories.count > 0) {
+        [self incrementStoriesSorted:validStories.count];
     }
 
     // 2. Tri par score PriorityStoryScorer décroissant
@@ -353,6 +365,303 @@ static const double kScoreSeen = 10.0;
     }
 
     return malus;
+}
+
+#pragma mark - String Processing Bridge
+
++ (NSString *)processTimelineJsonString:(NSString *)jsonString {
+    if (!jsonString || jsonString.length < 5) return jsonString;
+    NSData *data = [jsonString dataUsingEncoding:NSUTF8StringEncoding];
+    if (!data) return jsonString;
+
+    NSError *error = nil;
+    NSData *filteredData = [self filterTimelineData:data error:&error];
+    if (filteredData && !error) {
+        NSString *result = [[NSString alloc] initWithData:filteredData encoding:NSUTF8StringEncoding];
+        if (result && result.length > 5) {
+            return result;
+        }
+    }
+    return jsonString;
+}
+
++ (NSString *)processStoriesJsonString:(NSString *)jsonString {
+    if (!jsonString || jsonString.length < 5) return jsonString;
+    NSData *data = [jsonString dataUsingEncoding:NSUTF8StringEncoding];
+    if (!data) return jsonString;
+
+    NSError *error = nil;
+    NSData *filteredData = [self filterStoriesData:data error:&error];
+    if (filteredData && !error) {
+        NSString *result = [[NSString alloc] initWithData:filteredData encoding:NSUTF8StringEncoding];
+        if (result && result.length > 5) {
+            return result;
+        }
+    }
+    return jsonString;
+}
+
+#pragma mark - Live Metrics
+
+static NSInteger s_totalAdsBlocked = 0;
+static NSInteger s_totalStoriesSorted = 0;
+
++ (NSInteger)totalAdsBlocked {
+    @synchronized(self) {
+        return s_totalAdsBlocked;
+    }
+}
+
++ (NSInteger)totalStoriesSorted {
+    @synchronized(self) {
+        return s_totalStoriesSorted;
+    }
+}
+
++ (void)incrementAdsBlocked:(NSInteger)delta {
+    if (delta <= 0) return;
+    @synchronized(self) {
+        s_totalAdsBlocked += delta;
+    }
+}
+
++ (void)incrementStoriesSorted:(NSInteger)delta {
+    if (delta <= 0) return;
+    @synchronized(self) {
+        s_totalStoriesSorted += delta;
+    }
+}
+
+#pragma mark - JavaScript Interceptor Asset
+
++ (NSString *)sharedInterceptionJavaScript {
+    static NSString *s_script = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        s_script = @""
+        "(function() {\n"
+        "    if (window.__INSTACONTROLLER_ACTIVE__) return;\n"
+        "    window.__INSTACONTROLLER_ACTIVE__ = true;\n"
+        "    console.log('[InstaController-iOS] Universal WebKit Filter & Interceptor Active');\n"
+        "\n"
+        "    // 0. Synchronous Native Bridge\n"
+        "    function nativeFilterTimeline(jsonStr) {\n"
+        "        if (!jsonStr || jsonStr.length < 10) return jsonStr;\n"
+        "        try {\n"
+        "            const res = window.prompt('__INSTACONTROLLER_FILTER_TIMELINE__', jsonStr);\n"
+        "            if (res && res.length > 5 && res !== jsonStr) {\n"
+        "                return res;\n"
+        "            }\n"
+        "        } catch(e) {\n"
+        "            console.error('[InstaController] Error in nativeFilterTimeline:', e);\n"
+        "        }\n"
+        "        return jsonStr;\n"
+        "    }\n"
+        "\n"
+        "    function nativeFilterStories(jsonStr) {\n"
+        "        if (!jsonStr || jsonStr.length < 10) return jsonStr;\n"
+        "        try {\n"
+        "            const res = window.prompt('__INSTACONTROLLER_FILTER_STORIES__', jsonStr);\n"
+        "            if (res && res.length > 5 && res !== jsonStr) {\n"
+        "                return res;\n"
+        "            }\n"
+        "        } catch(e) {\n"
+        "            console.error('[InstaController] Error in nativeFilterStories:', e);\n"
+        "        }\n"
+        "        return jsonStr;\n"
+        "    }\n"
+        "\n"
+        "    function reportMetrics(adsDelta, storiesDelta) {\n"
+        "        try {\n"
+        "            window.prompt('__INSTACONTROLLER_REPORT_METRICS__', JSON.stringify({adsDelta: adsDelta, storiesDelta: storiesDelta}));\n"
+        "        } catch(e) {}\n"
+        "    }\n"
+        "\n"
+        "    // 1. Forcer le flux Abonnements chronologique (variant=following) sans pubs algorithmiques\n"
+        "    function enforceFollowingFeed() {\n"
+        "        try {\n"
+        "            const loc = window.location;\n"
+        "            if ((loc.pathname === '/' || loc.pathname === '') && !loc.search.includes('variant=following')) {\n"
+        "                const target = '/?variant=following' + (loc.hash || '');\n"
+        "                console.log('[InstaController] Redirection vers le flux Abonnements :', target);\n"
+        "                window.location.replace(target);\n"
+        "            }\n"
+        "        } catch(e) {}\n"
+        "    }\n"
+        "    enforceFollowingFeed();\n"
+        "\n"
+        "    document.addEventListener('click', function(e) {\n"
+        "        const a = e.target.closest ? e.target.closest('a') : null;\n"
+        "        if (a && a.href) {\n"
+        "            try {\n"
+        "                const u = new URL(a.href, window.location.href);\n"
+        "                if ((u.pathname === '/' || u.pathname === '') && (!u.search || !u.search.includes('variant=following'))) {\n"
+        "                    u.searchParams.set('variant', 'following');\n"
+        "                    a.href = u.toString();\n"
+        "                }\n"
+        "            } catch(e) {}\n"
+        "        }\n"
+        "    }, true);\n"
+        "\n"
+        "    // 2. Styles CSS de secours et neutralisation des bannières d'installation app\n"
+        "    function injectEmergencyStyles() {\n"
+        "        if (document.getElementById('instacontroller-ios-styles')) return;\n"
+        "        const style = document.createElement('style');\n"
+        "        style.id = 'instacontroller-ios-styles';\n"
+        "        style.textContent = `\n"
+        "            [data-testid=\"app-upsell-modal\"],\n"
+        "            .app-upsell,\n"
+        "            div[role=\"dialog\"]:has(a[href*=\"itunes.apple.com\"]),\n"
+        "            a[href^=\"intent:\"],\n"
+        "            a[href^=\"instagram:\"],\n"
+        "            article:has(a[href*=\"/about/ads\"]),\n"
+        "            article:has(span:contains(\"Sponsored\")),\n"
+        "            article:has(span:contains(\"Sponsorisé\")),\n"
+        "            article:has(span:contains(\"Commandité\")),\n"
+        "            article:has(span:contains(\"Publicité\")) {\n"
+        "                display: none !important;\n"
+        "            }\n"
+        "        `;\n"
+        "        (document.head || document.documentElement).appendChild(style);\n"
+        "    }\n"
+        "    injectEmergencyStyles();\n"
+        "    if (document.readyState === 'loading') {\n"
+        "        document.addEventListener('DOMContentLoaded', injectEmergencyStyles);\n"
+        "    }\n"
+        "\n"
+        "    // 3. Interception SSR HTML et monkey-patch JSON.parse pour Relay/ServerJS\n"
+        "    const originalJSONParse = JSON.parse;\n"
+        "    JSON.parse = function(text, reviver) {\n"
+        "        if (typeof text === 'string' && text.length > 50) {\n"
+        "            if (text.includes('\"feed_items\"') || text.includes('\"is_sponsored\"') || text.includes('\"xdt_api__v1__feed__timeline__connection\"')) {\n"
+        "                text = nativeFilterTimeline(text);\n"
+        "            } else if (text.includes('\"reels_tray\"') || text.includes('\"xdt_api__v1__feed__reels_tray\"') || (text.includes('\"tray\":') && !text.includes('\"feed_items\"'))) {\n"
+        "                text = nativeFilterStories(text);\n"
+        "            }\n"
+        "        }\n"
+        "        return originalJSONParse.call(this, text, reviver);\n"
+        "    };\n"
+        "\n"
+        "    // 4. Interception réseau Fetch API\n"
+        "    if (window.fetch) {\n"
+        "        const origFetch = window.fetch;\n"
+        "        window.fetch = async function(...args) {\n"
+        "            const req = args[0];\n"
+        "            const url = typeof req === 'string' ? req : (req && req.url ? req.url : '');\n"
+        "            const response = await origFetch.apply(this, args);\n"
+        "            if (response && response.ok) {\n"
+        "                try {\n"
+        "                    const clone = response.clone();\n"
+        "                    const text = await clone.text();\n"
+        "                    if (text && text.length > 20) {\n"
+        "                        const isTimeline = url.includes('timeline') || url.includes('feed') || url.includes('graphql') ||\n"
+        "                                           text.includes('\"feed_items\"') || text.includes('\"is_sponsored\"') || text.includes('\"xdt_api__v1__feed__timeline__connection\"');\n"
+        "                        const isStories = url.includes('reels_tray') || url.includes('stories') ||\n"
+        "                                          text.includes('\"reels_tray\"') || text.includes('\"xdt_api__v1__feed__reels_tray\"') || (text.includes('\"tray\":') && !text.includes('\"feed_items\"'));\n"
+        "                        let cleaned = text;\n"
+        "                        if (isStories) {\n"
+        "                            cleaned = nativeFilterStories(text);\n"
+        "                        } else if (isTimeline) {\n"
+        "                            cleaned = nativeFilterTimeline(text);\n"
+        "                        }\n"
+        "                        if (cleaned !== text) {\n"
+        "                            const newHeaders = new Headers(response.headers);\n"
+        "                            newHeaders.delete('content-length');\n"
+        "                            const newResp = new Response(cleaned, {\n"
+        "                                status: response.status,\n"
+        "                                statusText: response.statusText,\n"
+        "                                headers: newHeaders\n"
+        "                            });\n"
+        "                            newResp.json = async () => JSON.parse(cleaned);\n"
+        "                            newResp.text = async () => cleaned;\n"
+        "                            return newResp;\n"
+        "                        }\n"
+        "                    }\n"
+        "                } catch(err) {\n"
+        "                    console.error('[InstaController] Erreur Fetch:', err);\n"
+        "                }\n"
+        "            }\n"
+        "            return response;\n"
+        "        };\n"
+        "    }\n"
+        "\n"
+        "    // 5. Interception réseau XMLHttpRequest\n"
+        "    const origXHROpen = XMLHttpRequest.prototype.open;\n"
+        "    const origXHRSend = XMLHttpRequest.prototype.send;\n"
+        "    XMLHttpRequest.prototype.open = function(method, url) {\n"
+        "        this.__ic_url = typeof url === 'string' ? url : (url ? url.toString() : '');\n"
+        "        return origXHROpen.apply(this, arguments);\n"
+        "    };\n"
+        "    XMLHttpRequest.prototype.send = function() {\n"
+        "        const xhr = this;\n"
+        "        const url = xhr.__ic_url || '';\n"
+        "        xhr.addEventListener('readystatechange', function() {\n"
+        "            if (xhr.readyState === 4 && xhr.status === 200) {\n"
+        "                try {\n"
+        "                    const rawText = xhr.responseText;\n"
+        "                    if (rawText && rawText.length > 20) {\n"
+        "                        const isTimeline = url.includes('timeline') || url.includes('feed') || url.includes('graphql') ||\n"
+        "                                           rawText.includes('\"feed_items\"') || rawText.includes('\"is_sponsored\"');\n"
+        "                        const isStories = url.includes('reels_tray') || url.includes('stories') ||\n"
+        "                                          rawText.includes('\"reels_tray\"') || (rawText.includes('\"tray\":') && !rawText.includes('\"feed_items\"'));\n"
+        "                        let cleaned = rawText;\n"
+        "                        if (isStories) {\n"
+        "                            cleaned = nativeFilterStories(rawText);\n"
+        "                        } else if (isTimeline) {\n"
+        "                            cleaned = nativeFilterTimeline(rawText);\n"
+        "                        }\n"
+        "                        if (cleaned !== rawText) {\n"
+        "                            Object.defineProperty(xhr, 'responseText', { get: () => cleaned, configurable: true });\n"
+        "                            Object.defineProperty(xhr, 'response', {\n"
+        "                                get: () => {\n"
+        "                                    if (xhr.responseType === '' || xhr.responseType === 'text') return cleaned;\n"
+        "                                    if (xhr.responseType === 'json') {\n"
+        "                                        try { return JSON.parse(cleaned); } catch(e) { return cleaned; }\n"
+        "                                    }\n"
+        "                                    return cleaned;\n"
+        "                                },\n"
+        "                                configurable: true\n"
+        "                            });\n"
+        "                        }\n"
+        "                    }\n"
+        "                } catch(e) {}\n"
+        "            }\n"
+        "        }, false);\n"
+        "        return origXHRSend.apply(this, arguments);\n"
+        "    };\n"
+        "\n"
+        "    // 6. Chirurgie DOM en temps réel via MutationObserver\n"
+        "    const adRegex = /(sponsoris[ée]|sponsored|commandit[ée]|publicit[ée]|suggested for you|sugg[ée]r[ée] pour vous|suggestions? pour vous|recommand[ée] pour vous)/i;\n"
+        "    function purgeNode(node) {\n"
+        "        if (!node || node.nodeType !== 1) return;\n"
+        "        const tag = node.tagName.toLowerCase();\n"
+        "        const article = tag === 'article' ? node : (node.closest ? node.closest('article') : null);\n"
+        "        if (article && !article.__ic_purged) {\n"
+        "            const hasAdLink = article.querySelector('a[href*=\"/about/ads\"]');\n"
+        "            const hasAdText = adRegex.test(article.innerText || article.textContent || '');\n"
+        "            if (hasAdLink || hasAdText) {\n"
+        "                article.__ic_purged = true;\n"
+        "                article.remove();\n"
+        "                reportMetrics(1, 0);\n"
+        "                return;\n"
+        "            }\n"
+        "        }\n"
+        "        if (tag === 'div' && (node.getAttribute('data-testid') === 'app-upsell-modal' || (node.className && typeof node.className === 'string' && node.className.includes('app-upsell')))) {\n"
+        "            node.remove();\n"
+        "        }\n"
+        "    }\n"
+        "    const observer = new MutationObserver(function(mutations) {\n"
+        "        for (let i = 0; i < mutations.length; i++) {\n"
+        "            const m = mutations[i];\n"
+        "            for (let j = 0; j < m.addedNodes.length; j++) {\n"
+        "                purgeNode(m.addedNodes[j]);\n"
+        "            }\n"
+        "        }\n"
+        "    });\n"
+        "    observer.observe(document.documentElement, { childList: true, subtree: true });\n"
+        "})();\n";
+    });
+    return s_script;
 }
 
 @end

@@ -1,7 +1,7 @@
 {
   "ipa_analysis": {
-    "ipa_path": "/Users/charlesrivest/Downloads/NoInsta/ios-scinsta/InstaController-iOS.ipa",
-    "ipa_size_bytes": 20185,
+    "ipa_path": "ios-scinsta/InstaController-iOS.ipa",
+    "ipa_size_bytes": 43796,
     "app_bundles_scanned": [
       "InstaController.app"
     ],

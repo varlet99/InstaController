@@ -6,6 +6,7 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <WebKit/WebKit.h>
 #import <objc/runtime.h>
 #import "InstaControllerFilter.h"
 
@@ -126,6 +127,31 @@ static void HookSCInstaNativeClasses(void) {
     }
 }
 
+#pragma mark - WKWebView Auto-Injection Hook
+
+@interface WKWebView (InstaControllerHook)
+- (instancetype)ic_initWithFrame:(CGRect)frame configuration:(WKWebViewConfiguration *)configuration;
+@end
+
+@implementation WKWebView (InstaControllerHook)
+
+- (instancetype)ic_initWithFrame:(CGRect)frame configuration:(WKWebViewConfiguration *)configuration {
+    if (configuration) {
+        if (!configuration.userContentController) {
+            configuration.userContentController = [[WKUserContentController alloc] init];
+        }
+        NSString *jsSource = [InstaControllerFilter sharedInterceptionJavaScript];
+        WKUserScript *userScript = [[WKUserScript alloc] initWithSource:jsSource
+                                                          injectionTime:WKUserScriptInjectionTimeAtDocumentStart
+                                                       forMainFrameOnly:NO];
+        [configuration.userContentController addUserScript:userScript];
+        NSLog(@"[InstaController-iOS] Script de filtrage universel injecté dans la WKWebView.");
+    }
+    return [self ic_initWithFrame:frame configuration:configuration];
+}
+
+@end
+
 #pragma mark - Constructor Initializer
 
 __attribute__((constructor))
@@ -141,6 +167,16 @@ static void initInstaController(void) {
     SEL newSel = @selector(ic_JSONObjectWithData:options:error:);
     SwizzleClassMethod(jsonSerClass, origSel, newSel);
 
+    // Swizzle de WKWebView pour injection universelle
+    Class wkClass = objc_getClass("WKWebView");
+    if (wkClass) {
+        SEL wkOrigSel = @selector(initWithFrame:configuration:);
+        SEL wkNewSel = @selector(ic_initWithFrame:configuration:);
+        SwizzleInstanceMethod(wkClass, wkOrigSel, wkNewSel);
+        NSLog(@"[InstaController-iOS] Hook de WKWebView initialisé.");
+    }
+
     // Hooks sur classes natives Instagram si présentes au chargement
     HookSCInstaNativeClasses();
 }
+

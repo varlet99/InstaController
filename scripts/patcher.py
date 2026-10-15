@@ -46,6 +46,13 @@ def patch_apk(input_apk, output_apk, extension_dex):
     print(f"\n[Patcher] Démarrage du patch de : {input_apk}")
     work_dir = tempfile.mkdtemp(prefix="instacontroller_patch_")
 
+    # Configuration JAVA_HOME
+    os.environ["JAVA_HOME"] = "/opt/homebrew/opt/openjdk@21"
+    os.environ["PATH"] = f"/opt/homebrew/opt/openjdk@21/bin:{os.environ.get('PATH', '')}"
+
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    dex_patches_dir = os.path.join(project_root, "apk_workspace", "dex_patches")
+
     try:
         # 1. Analyse des DEX existants dans l'APK
         dex_indices = []
@@ -58,9 +65,9 @@ def patch_apk(input_apk, output_apk, extension_dex):
 
         next_dex_index = max(dex_indices) + 1 if dex_indices else 1
         new_dex_name = f"classes{next_dex_index}.dex"
-        print(f"[Patcher] Multi-DEX détecté ({len(dex_indices)} DEX). Nouveau DEX assigné : {new_dex_name}")
+        print(f"[Patcher] Multi-DEX détecté ({len(dex_indices)} DEX). Extension assignée : {new_dex_name}")
 
-        # 2. Création de l'archive patchée en injectant notre classes.dex
+        # 2. Création de l'archive patchée en injectant classes.dex, classes5.dex et l'extension DEX
         unsigned_apk = os.path.join(work_dir, "unsigned.apk")
         with zipfile.ZipFile(input_apk, 'r') as zin:
             with zipfile.ZipFile(unsigned_apk, 'w', compression=zipfile.ZIP_DEFLATED) as zout:
@@ -69,8 +76,31 @@ def patch_apk(input_apk, output_apk, extension_dex):
                     if item.filename.startswith("META-INF/"):
                         if item.filename.endswith((".RSA", ".SF", ".MF", ".DSA", ".EC")):
                             continue
+                    # Remplacement des DEX patchés
+                    if os.path.isdir(dex_patches_dir) and item.filename in ["classes.dex", "classes3.dex", "classes5.dex"]:
+                        continue
+                    # Remplacement du Manifest patché
+                    manifest_patch = os.path.join(project_root, "apk_workspace", "AndroidManifest.xml")
+                    if item.filename == "AndroidManifest.xml" and os.path.isfile(manifest_patch):
+                        continue
                     data = zin.read(item.filename)
                     zout.writestr(item, data)
+
+                # Remplacement du Manifest avec targetActivity direct
+                manifest_patch = os.path.join(project_root, "apk_workspace", "AndroidManifest.xml")
+                if os.path.isfile(manifest_patch):
+                    print("[Patcher] Injection de AndroidManifest.xml patché (targetActivity -> InstagramMainActivity)...")
+                    with open(manifest_patch, 'rb') as f:
+                        zout.writestr("AndroidManifest.xml", f.read())
+
+                # Remplacement des DEX avec hooks Smali
+                if os.path.isdir(dex_patches_dir):
+                    for patch_name in ["classes.dex", "classes3.dex", "classes5.dex"]:
+                        patch_path = os.path.join(dex_patches_dir, patch_name)
+                        if os.path.isfile(patch_path):
+                            print(f"[Patcher] Remplacement de {patch_name} avec les hooks Smali injectés...")
+                            with open(patch_path, 'rb') as f:
+                                zout.writestr(patch_name, f.read())
 
                 # Injection de notre DEX contenant InstaControllerHook et InstagramFilter
                 print(f"[Patcher] Injection de {new_dex_name} contenant InstaControllerHook...")

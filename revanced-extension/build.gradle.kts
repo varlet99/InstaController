@@ -31,22 +31,30 @@ kotlin {
 
 val d8Executable = "/Users/charlesrivest/Library/Android/sdk/build-tools/34.0.0/d8"
 
-tasks.register<Exec>("dex") {
+tasks.register("dex") {
     dependsOn("jar", ":core-filter:jar")
     val outputDir = layout.buildDirectory.dir("libs").get().asFile
     val extensionJar = layout.buildDirectory.file("libs/revanced-extension-1.0.0-SNAPSHOT.jar").get().asFile
     val coreFilterJar = project(":core-filter").layout.buildDirectory.file("libs/core-filter-1.0.0-SNAPSHOT.jar").get().asFile
 
-    inputs.files(extensionJar, coreFilterJar)
-    outputs.file(File(outputDir, "classes.dex"))
+    doLast {
+        val allJars = mutableListOf<String>()
+        allJars.add(extensionJar.absolutePath)
+        allJars.add(coreFilterJar.absolutePath)
+        configurations.runtimeClasspath.get().files.forEach { file ->
+            if (file.name.contains("kotlin-stdlib") || file.name.contains("annotations")) {
+                allJars.add(file.absolutePath)
+            }
+        }
 
-    commandLine(
-        d8Executable,
-        "--output", outputDir.absolutePath,
-        "--min-api", "26",
-        extensionJar.absolutePath,
-        coreFilterJar.absolutePath
-    )
+        exec {
+            commandLine = listOf(
+                d8Executable,
+                "--output", outputDir.absolutePath,
+                "--min-api", "26"
+            ) + allJars
+        }
+    }
 }
 
 tasks.named("assemble") {

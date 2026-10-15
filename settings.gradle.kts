@@ -24,3 +24,4 @@ rootProject.name = "InstaController"
 
 include(":core-filter")
 include(":android-sandbox")
+include(":revanced-extension")

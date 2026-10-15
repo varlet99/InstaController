@@ -1,0 +1,68 @@
+{
+  "status": "ok",
+  "num_results": 6,
+  "feed_items": [
+    {
+      "media_or_ad": {
+        "id": "post_legit_1",
+        "caption": {
+          "text": "Belle journée en montagne !"
+        },
+        "user": {
+          "pk": "1001",
+          "username": "charlie_rando"
+        }
+      }
+    },
+    {
+      "media_or_ad": {
+        "id": "ad_post_1",
+        "is_sponsored": 1,
+        "ad_id": "sponsor_998811",
+        "caption": {
+          "text": "Achetez cette montre connectée à -50% !"
+        },
+        "user": {
+          "pk": "9999",
+          "username": "smartwatch_brand"
+        }
+      }
+    },
+    {
+      "suggested_users": {
+        "title": "Suggestions pour vous",
+        "suggestions": [
+          { "pk": "8001", "username": "inconnu_1" },
+          { "pk": "8002", "username": "inconnu_2" }
+        ]
+      }
+    },
+    {
+      "media_or_ad": {
+        "id": "post_legit_2",
+        "caption": {
+          "text": "Nouvelle recette de pâtes fraîches maison"
+        },
+        "user": {
+          "pk": "1002",
+          "username": "chef_mario"
+        }
+      }
+    },
+    {
+      "netego_type": "ad4ad",
+      "injected": true,
+      "title": "Téléchargez notre nouvelle application partenaire"
+    },
+    {
+      "media_or_ad": {
+        "id": "ad_post_2",
+        "is_sponsored": true,
+        "ad_id": "ad_casino_44",
+        "caption": {
+          "text": "Jouez gratuitement en ligne !"
+        }
+      }
+    }
+  ]
+}

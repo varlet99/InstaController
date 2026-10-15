@@ -1,6 +1,6 @@
 //
 //  main.m
-//  InstaController-iOS Host Application with v2.0 In-Process Filter & Native Floating HUD
+//  InstaController-iOS Host Application with v3.0 Anti-Obfuscation Engine & DOM Scanner
 //
 
 #import <UIKit/UIKit.h>
@@ -12,6 +12,7 @@
 @property (strong, nonatomic) UIVisualEffectView *hudView;
 @property (strong, nonatomic) UILabel *hudLabel;
 @property (strong, nonatomic) UIView *statusDot;
+@property (strong, nonatomic) UIButton *scanButton;
 @end
 
 @implementation ViewController
@@ -29,7 +30,7 @@
     [[WKWebsiteDataStore defaultDataStore] removeDataOfTypes:types
                                                modifiedSince:[NSDate distantPast]
                                            completionHandler:^{
-        NSLog(@"[InstaController-iOS v2.0] Service Workers et caches WebKit purgés avec succès.");
+        NSLog(@"[InstaController-iOS v3.0] Service Workers et caches WebKit purgés avec succès.");
     }];
 
     // 2. Configuration de la WKWebView
@@ -41,7 +42,7 @@
     // Handler asynchrone ultra-léger pour le HUD natif
     [userContentController addScriptMessageHandler:self name:@"instaController"];
 
-    // Injection universelle de l'intercepteur v2.0 in-process à DocumentStart
+    // Injection universelle de l'intercepteur v3.0 in-process à DocumentStart
     NSString *jsSource = [InstaControllerFilter sharedInterceptionJavaScript];
     WKUserScript *userScript = [[WKUserScript alloc] initWithSource:jsSource
                                                       injectionTime:WKUserScriptInjectionTimeAtDocumentStart
@@ -58,7 +59,7 @@
     self.webView.customUserAgent = @"Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 280.0.0.18.112";
     [self.view addSubview:self.webView];
 
-    // 4. Construction du Panneau HUD Flottant Natif v2.0
+    // 4. Construction du Panneau HUD Flottant Natif v3.0 avec Scanner
     [self setupNativeFloatingHUD];
 
     // 5. Chargement initial forcé sur le flux Abonnements chronologique
@@ -74,7 +75,7 @@
     self.hudView.layer.cornerRadius = 20.0;
     self.hudView.layer.masksToBounds = YES;
     self.hudView.layer.borderWidth = 1.0;
-    self.hudView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.18].CGColor;
+    self.hudView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.2].CGColor;
 
     // Point vert d'activité
     self.statusDot = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 8, 8)];
@@ -82,14 +83,27 @@
     self.statusDot.layer.cornerRadius = 4.0;
     self.statusDot.backgroundColor = [UIColor colorWithRed:0.2 green:0.85 blue:0.4 alpha:1.0];
 
-    // Label de statut avec mention explicite v2.0
+    // Label de statut avec mention explicite v3.0
     self.hudLabel = [[UILabel alloc] init];
     self.hudLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.hudLabel.textColor = [UIColor whiteColor];
-    self.hudLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-    self.hudLabel.text = @"v2.0 🛡️ Pubs : 0 | Stories : 0";
+    self.hudLabel.font = [UIFont systemFontOfSize:12.5 weight:UIFontWeightSemibold];
+    self.hudLabel.text = @"v3.0 🛡️ Pubs : 0 | Stories : 0";
 
-    UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[self.statusDot, self.hudLabel]];
+    // Séparateur vertical
+    UIView *separator = [[UIView alloc] init];
+    separator.translatesAutoresizingMaskIntoConstraints = NO;
+    separator.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.25];
+
+    // Bouton tactile Scanner DOM
+    self.scanButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.scanButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.scanButton setTitle:@"🔍 Scanner" forState:UIControlStateNormal];
+    [self.scanButton setTitleColor:[UIColor colorWithRed:0.35 green:0.82 blue:1.0 alpha:1.0] forState:UIControlStateNormal];
+    self.scanButton.titleLabel.font = [UIFont systemFontOfSize:11.5 weight:UIFontWeightBold];
+    [self.scanButton addTarget:self action:@selector(scanButtonTapped) forControlEvents:UIControlEventTouchUpInside];
+
+    UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[self.statusDot, self.hudLabel, separator, self.scanButton]];
     stack.translatesAutoresizingMaskIntoConstraints = NO;
     stack.axis = UILayoutConstraintAxisHorizontal;
     stack.alignment = UIStackViewAlignmentCenter;
@@ -102,17 +116,20 @@
         [self.statusDot.widthAnchor constraintEqualToConstant:8.0],
         [self.statusDot.heightAnchor constraintEqualToConstant:8.0],
 
+        [separator.widthAnchor constraintEqualToConstant:1.0],
+        [separator.heightAnchor constraintEqualToConstant:14.0],
+
         [stack.topAnchor constraintEqualToAnchor:self.hudView.contentView.topAnchor constant:8.0],
         [stack.bottomAnchor constraintEqualToAnchor:self.hudView.contentView.bottomAnchor constant:-8.0],
-        [stack.leadingAnchor constraintEqualToAnchor:self.hudView.contentView.leadingAnchor constant:14.0],
-        [stack.trailingAnchor constraintEqualToAnchor:self.hudView.contentView.trailingAnchor constant:-14.0],
+        [stack.leadingAnchor constraintEqualToAnchor:self.hudView.contentView.leadingAnchor constant:12.0],
+        [stack.trailingAnchor constraintEqualToAnchor:self.hudView.contentView.trailingAnchor constant:-12.0],
 
         [self.hudView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
         [self.hudView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-10.0],
         [self.hudView.heightAnchor constraintEqualToConstant:40.0]
     ]];
 
-    // Geste de toucher pour retour haptique
+    // Geste de toucher pour retour haptique sur le label
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(hudTapped)];
     [self.hudView addGestureRecognizer:tap];
 }
@@ -122,11 +139,11 @@
     [feedback impactOccurred];
 
     NSString *prevText = self.hudLabel.text;
-    self.hudLabel.text = @"v2.0 ✅ Actif - 100% In-Process";
+    self.hudLabel.text = @"v3.0 ✅ Anti-Obfuscation Actif";
     self.statusDot.backgroundColor = [UIColor colorWithRed:0.0 green:0.95 blue:0.5 alpha:1.0];
 
     [UIView animateWithDuration:0.2 animations:^{
-        self.hudView.transform = CGAffineTransformMakeScale(1.06, 1.06);
+        self.hudView.transform = CGAffineTransformMakeScale(1.05, 1.05);
     } completion:^(BOOL finished) {
         [UIView animateWithDuration:0.2 delay:1.2 options:0 animations:^{
             self.hudView.transform = CGAffineTransformIdentity;
@@ -136,11 +153,32 @@
     }];
 }
 
+- (void)scanButtonTapped {
+    UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleHeavy];
+    [feedback impactOccurred];
+
+    NSString *js = @"(function() { return (window.__INSTACONTROLLER_SCAN_DOM__ ? window.__INSTACONTROLLER_SCAN_DOM__() : 'Scanner non disponible'); })();";
+    [self.webView evaluateJavaScript:js completionHandler:^(id result, NSError *error) {
+        NSString *report = @"Aucune donnée disponible.";
+        if ([result isKindOfClass:[NSString class]]) {
+            report = (NSString *)result;
+        } else if (error) {
+            report = [NSString stringWithFormat:@"Erreur : %@", error.localizedDescription];
+        }
+
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"🔍 Diagnostic DOM (v3.0)"
+                                                                       message:report
+                                                                preferredStyle:UIAlertControllerStyleAlert];
+        [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleCancel handler:nil]];
+        [self presentViewController:alert animated:YES completion:nil];
+    }];
+}
+
 - (void)updateHUD {
     dispatch_async(dispatch_get_main_queue(), ^{
         NSInteger ads = [InstaControllerFilter totalAdsBlocked];
         NSInteger stories = [InstaControllerFilter totalStoriesSorted];
-        self.hudLabel.text = [NSString stringWithFormat:@"v2.0 🛡️ Pubs : %ld | Stories : %ld", (long)ads, (long)stories];
+        self.hudLabel.text = [NSString stringWithFormat:@"v3.0 🛡️ Pubs : %ld | Stories : %ld", (long)ads, (long)stories];
 
         [UIView animateWithDuration:0.15 animations:^{
             self.statusDot.transform = CGAffineTransformMakeScale(1.3, 1.3);
@@ -152,7 +190,7 @@
     });
 }
 
-#pragma mark - WKScriptMessageHandler (Réception Asynchrone Ultra-Rapide)
+#pragma mark - WKScriptMessageHandler
 
 - (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(WKScriptMessage *)message {
     if ([message.name isEqualToString:@"instaController"] && [message.body isKindOfClass:[NSDictionary class]]) {
@@ -163,6 +201,28 @@
         if (stories > 0) [InstaControllerFilter incrementStoriesSorted:stories];
         [self updateHUD];
     }
+}
+
+#pragma mark - WKNavigationDelegate (Blocage Dur de la Route Racine)
+
+- (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {
+    NSURL *url = navigationAction.request.URL;
+    NSString *host = url.host ?: @"";
+    NSString *path = url.path ?: @"";
+    NSString *query = url.query ?: @"";
+
+    if ([host containsString:@"instagram.com"] && (path.length == 0 || [path isEqualToString:@"/"]) && ![query containsString:@"variant=following"]) {
+        NSLog(@"[InstaController-iOS v3.0] Interception navigation racine -> Redirection vers variant=following");
+        NSURLComponents *comp = [NSURLComponents componentsWithURL:url resolvingAgainstBaseURL:NO];
+        NSMutableArray *queryItems = [comp.queryItems mutableCopy] ?: [NSMutableArray array];
+        [queryItems addObject:[NSURLQueryItem queryItemWithName:@"variant" value:@"following"]];
+        comp.queryItems = queryItems;
+        decisionHandler(WKNavigationActionPolicyCancel);
+        [webView loadRequest:[NSURLRequest requestWithURL:comp.URL]];
+        return;
+    }
+
+    decisionHandler(WKNavigationActionPolicyAllow);
 }
 
 #pragma mark - WKUIDelegate

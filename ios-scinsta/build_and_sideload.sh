@@ -60,20 +60,24 @@ if [ -f "${SCRIPT_DIR}/test_ios_filter" ]; then
     "${SCRIPT_DIR}/test_ios_filter"
 fi
 
-# 4. Recherche de l'IPA source
+# 4. Recherche de l'IPA source (Instagram.ipa ou spécifié en argument)
 TARGET_IPA="$1"
 if [ -z "${TARGET_IPA}" ]; then
-    if [ -f "${ROOT_DIR}/apk_workspace/instagram_base.ipa" ]; then
-        TARGET_IPA="${ROOT_DIR}/apk_workspace/instagram_base.ipa"
+    if [ -f "${SCRIPT_DIR}/Instagram.ipa" ]; then
+        TARGET_IPA="${SCRIPT_DIR}/Instagram.ipa"
+    elif [ -f "${ROOT_DIR}/Instagram.ipa" ]; then
+        TARGET_IPA="${ROOT_DIR}/Instagram.ipa"
     elif [ -f "${SCRIPT_DIR}/instagram_base.ipa" ]; then
         TARGET_IPA="${SCRIPT_DIR}/instagram_base.ipa"
+    elif [ -f "${ROOT_DIR}/apk_workspace/instagram_base.ipa" ]; then
+        TARGET_IPA="${ROOT_DIR}/apk_workspace/instagram_base.ipa"
     fi
 fi
 
 FINAL_IPA="${SCRIPT_DIR}/InstaController-iOS.ipa"
 
 if [ -n "${TARGET_IPA}" ] && [ -f "${TARGET_IPA}" ]; then
-    echo "[*] Étape 3 : Injection dans l'IPA officiel spécifié : ${TARGET_IPA}"
+    echo "[*] Étape 3 : Injection dans le véritable IPA officiel Instagram : ${TARGET_IPA}"
     BUILD_DIR="${SCRIPT_DIR}/build_patch_ipa"
     rm -rf "${BUILD_DIR}"
     mkdir -p "${BUILD_DIR}"
@@ -91,24 +95,33 @@ if [ -n "${TARGET_IPA}" ] && [ -f "${TARGET_IPA}" ]; then
     EXE_NAME=$(defaults read "${APP_DIR}/Info.plist" CFBundleExecutable 2>/dev/null || echo "${APP_NAME%.app}")
     EXE_PATH="${APP_DIR}/${EXE_NAME}"
     
-    echo "  -> Bundle détecté : ${APP_NAME} (Binaire : ${EXE_NAME})"
+    echo "  -> Bundle détecté : ${APP_NAME} (Binaire principal : ${EXE_NAME})"
     mkdir -p "${APP_DIR}/Frameworks"
+    
+    # 1. Intégration optionnelle de SCInsta.dylib officiel si présent
+    if [ -f "${SCRIPT_DIR}/SCInsta.dylib" ]; then
+        echo "  -> [SCInsta] Injection de SCInsta.dylib officiel dans Frameworks/..."
+        cp "${SCRIPT_DIR}/SCInsta.dylib" "${APP_DIR}/Frameworks/SCInsta.dylib"
+        ldid -S "${APP_DIR}/Frameworks/SCInsta.dylib"
+        insert_dylib --inplace --all-yes "@executable_path/Frameworks/SCInsta.dylib" "${EXE_PATH}"
+    fi
+
+    # 2. Intégration de InstaController.dylib
+    echo "  -> [InstaController] Injection de InstaController.dylib dans Frameworks/..."
     cp "${SCRIPT_DIR}/InstaController.dylib" "${APP_DIR}/Frameworks/InstaController.dylib"
     ldid -S "${APP_DIR}/Frameworks/InstaController.dylib"
+    insert_dylib --inplace --all-yes "@executable_path/Frameworks/InstaController.dylib" "${EXE_PATH}"
     
-    echo "  -> Injection LC_LOAD_DYLIB dans le binaire Mach-O principal..."
-    insert_dylib --inplace --overwrite "@executable_path/Frameworks/InstaController.dylib" "${EXE_PATH}"
-    
-    echo "  -> Signature ad-hoc avec ldid..."
+    echo "  -> Re-signature du binaire Mach-O principal avec ldid..."
     ldid -S "${EXE_PATH}"
     
     FINAL_IPA="${SCRIPT_DIR}/Instagram_patched.ipa"
     echo "  -> Reconditionnement de l'archive IPA : ${FINAL_IPA}..."
     (cd "${BUILD_DIR}" && zip -qr "${FINAL_IPA}" Payload)
     rm -rf "${BUILD_DIR}"
-    echo "[+] IPA Instagram patché généré avec succès !"
+    echo "[+] IPA Instagram natif patché généré avec succès !"
 else
-    echo "[*] Étape 3 : Aucun IPA officiel fourni. Génération de l'application hôte InstaController-iOS (WKWebView + Mach-O)..."
+    echo "[*] Étape 3 : Aucun IPA officiel Instagram fourni. Génération de l'application hôte InstaController-iOS v3.0 (WKWebView + Mach-O)..."
     HOST_SRC="${SCRIPT_DIR}/host_app"
     BUILD_DIR="${SCRIPT_DIR}/build_host_ipa"
     rm -rf "${BUILD_DIR}"

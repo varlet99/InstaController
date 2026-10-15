@@ -59,11 +59,11 @@
     self.webView.customUserAgent = @"Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 280.0.0.18.112";
     [self.view addSubview:self.webView];
 
-    // 4. Construction du Panneau HUD Flottant Natif v3.0 avec Scanner
+    // 4. Construction du Panneau HUD Flottant Natif v3.1 avec Scanner
     [self setupNativeFloatingHUD];
 
-    // 5. Chargement initial forcé sur le flux Abonnements chronologique
-    NSURL *url = [NSURL URLWithString:@"https://www.instagram.com/?variant=following"];
+    // 5. Chargement initial standard d'Instagram
+    NSURL *url = [NSURL URLWithString:@"https://www.instagram.com/"];
     NSURLRequest *req = [NSURLRequest requestWithURL:url];
     [self.webView loadRequest:req];
 }
@@ -83,12 +83,12 @@
     self.statusDot.layer.cornerRadius = 4.0;
     self.statusDot.backgroundColor = [UIColor colorWithRed:0.2 green:0.85 blue:0.4 alpha:1.0];
 
-    // Label de statut avec mention explicite v3.0
+    // Label de statut avec mention explicite v3.1
     self.hudLabel = [[UILabel alloc] init];
     self.hudLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.hudLabel.textColor = [UIColor whiteColor];
     self.hudLabel.font = [UIFont systemFontOfSize:12.5 weight:UIFontWeightSemibold];
-    self.hudLabel.text = @"v3.0 🛡️ Pubs : 0 | Stories : 0";
+    self.hudLabel.text = @"v3.1 🛡️ Pubs : 0 | Stories : 0";
 
     // Séparateur vertical
     UIView *separator = [[UIView alloc] init];
@@ -139,7 +139,7 @@
     [feedback impactOccurred];
 
     NSString *prevText = self.hudLabel.text;
-    self.hudLabel.text = @"v3.0 ✅ Anti-Obfuscation Actif";
+    self.hudLabel.text = @"v3.1 ✅ Filtrage Chirurgical Actif";
     self.statusDot.backgroundColor = [UIColor colorWithRed:0.0 green:0.95 blue:0.5 alpha:1.0];
 
     [UIView animateWithDuration:0.2 animations:^{
@@ -166,7 +166,7 @@
             report = [NSString stringWithFormat:@"Erreur : %@", error.localizedDescription];
         }
 
-        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"🔍 Diagnostic DOM (v3.0)"
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"🔍 Diagnostic DOM (v3.1)"
                                                                        message:report
                                                                 preferredStyle:UIAlertControllerStyleAlert];
         [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleCancel handler:nil]];
@@ -178,7 +178,7 @@
     dispatch_async(dispatch_get_main_queue(), ^{
         NSInteger ads = [InstaControllerFilter totalAdsBlocked];
         NSInteger stories = [InstaControllerFilter totalStoriesSorted];
-        self.hudLabel.text = [NSString stringWithFormat:@"v3.0 🛡️ Pubs : %ld | Stories : %ld", (long)ads, (long)stories];
+        self.hudLabel.text = [NSString stringWithFormat:@"v3.1 🛡️ Pubs : %ld | Stories : %ld", (long)ads, (long)stories];
 
         [UIView animateWithDuration:0.15 animations:^{
             self.statusDot.transform = CGAffineTransformMakeScale(1.3, 1.3);
@@ -203,26 +203,20 @@
     }
 }
 
-#pragma mark - WKNavigationDelegate (Blocage Dur de la Route Racine)
+#pragma mark - WKNavigationDelegate (Anti-Universal Links & Stable Navigation)
 
 - (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {
     NSURL *url = navigationAction.request.URL;
-    NSString *host = url.host ?: @"";
-    NSString *path = url.path ?: @"";
-    NSString *query = url.query ?: @"";
+    NSString *scheme = url.scheme.lowercaseString;
 
-    if ([host containsString:@"instagram.com"] && (path.length == 0 || [path isEqualToString:@"/"]) && ![query containsString:@"variant=following"]) {
-        NSLog(@"[InstaController-iOS v3.0] Interception navigation racine -> Redirection vers variant=following");
-        NSURLComponents *comp = [NSURLComponents componentsWithURL:url resolvingAgainstBaseURL:NO];
-        NSMutableArray *queryItems = [comp.queryItems mutableCopy] ?: [NSMutableArray array];
-        [queryItems addObject:[NSURLQueryItem queryItemWithName:@"variant" value:@"following"]];
-        comp.queryItems = queryItems;
-        decisionHandler(WKNavigationActionPolicyCancel);
-        [webView loadRequest:[NSURLRequest requestWithURL:comp.URL]];
+    if ([scheme isEqualToString:@"http"] || [scheme isEqualToString:@"https"]) {
+        // WKNavigationActionPolicyAllow + 2 = _WKNavigationActionPolicyAllowWithoutTryingAppLink
+        // Empêche iOS d'ouvrir l'application Instagram officielle installée sur l'iPhone !
+        decisionHandler((WKNavigationActionPolicy)(WKNavigationActionPolicyAllow + 2));
         return;
     }
 
-    decisionHandler(WKNavigationActionPolicyAllow);
+    decisionHandler(WKNavigationActionPolicyCancel);
 }
 
 #pragma mark - WKUIDelegate

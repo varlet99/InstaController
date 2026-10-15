@@ -74,3 +74,19 @@ Cette commande exécute automatiquement :
 - **Appareil cible de validation** : Samsung Galaxy A13 5G (`SM-A136W`, Android 13 One UI).
 - **Session active** : Version officielle v450.0.0.50.77.
 - **Résultat** : Démarrage instantané depuis le lanceur Samsung One UI, affichage fluide, 0 publicité résiduelle dans le fil et les stories.
+
+---
+
+## 🍏 Module iOS & Sideloading iPhone (`ios-scinsta`)
+
+La Phase 5 apporte le support natif pour iOS inspiré de **SCInsta** :
+- **Moteur Objective-C natif** : [`InstaControllerFilter.m`](ios-scinsta/InstaControllerFilter.m) réplique 100% de la logique de filtrage REST/GraphQL et de réordonnancement des stories (`PriorityStoryScorer`).
+- **Hook Runtime Objective-C** : [`Tweak.m`](ios-scinsta/Tweak.m) intercepte `NSJSONSerialization` et swizzle les classes du runtime Instagram (`IGFeedItem`, `IGStoryTrayDataSource`).
+- **Binaire ARM64 & Injection Mach-O** : Compilation de `InstaController.dylib` et injection automatisée de la commande `LC_LOAD_DYLIB` via `tools/insert_dylib`.
+- **Veille REA Mach-O** : `anchor_watcher.py --macho` et `--ipa` vérifient la présence des 9 ancres textuelles critiques (score d'intégrité 100%).
+- **Déploiement en 1 clic** :
+  ```bash
+  ./ios-scinsta/build_and_sideload.sh [chemin_vers_instagram.ipa]
+  ```
+  Le script compile la dylib, exécute les tests unitaires (`test_ios_filter`), injecte le hook, signe avec `ldid`, détecte l'iPhone connecté en USB et ouvre automatiquement **Sideloadly** pour l'installation directe.
+

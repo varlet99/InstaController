@@ -11,3 +11,11 @@ local.properties
 *.apk
 *.idsig
 *.tmp
+tools/sdks/
+*.ipa
+build_ipa/
+build_host_ipa/
+build_patch_ipa/
+ios-scinsta/test_ios_filter
+!ios-scinsta/test_ios_filter.m
+ios-scinsta/host_app/InstaControllerHost

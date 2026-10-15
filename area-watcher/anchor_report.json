@@ -1,108 +1,26 @@
 {
-  "apk_analysis": {
-    "apk_path": "apk_workspace/instagram_base.apk",
-    "apk_size_bytes": 142611991,
-    "dex_files_scanned": [
-      "classes.dex",
-      "classes10.dex",
-      "classes11.dex",
-      "classes12.dex",
-      "classes13.dex",
-      "classes14.dex",
-      "classes15.dex",
-      "classes16.dex",
-      "classes17.dex",
-      "classes18.dex",
-      "classes19.dex",
-      "classes2.dex",
-      "classes20.dex",
-      "classes21.dex",
-      "classes22.dex",
-      "classes23.dex",
-      "classes3.dex",
-      "classes4.dex",
-      "classes5.dex",
-      "classes6.dex",
-      "classes7.dex",
-      "classes8.dex",
-      "classes9.dex"
+  "ipa_analysis": {
+    "ipa_path": "/Users/charlesrivest/Downloads/NoInsta/ios-scinsta/InstaController-iOS.ipa",
+    "ipa_size_bytes": 20185,
+    "app_bundles_scanned": [
+      "InstaController.app"
+    ],
+    "binaries_scanned": [
+      "Payload/InstaController.app/InstaController",
+      "Payload/InstaController.app/Frameworks/InstaController.dylib"
     ],
     "anchors_found": {
-      "reels_tray": {
-        "occurrences_in_dex": 1,
-        "dex_files": [
-          "classes2.dex"
-        ]
-      },
-      "is_sponsored": {
-        "occurrences_in_dex": 5,
-        "dex_files": [
-          "classes.dex",
-          "classes14.dex",
-          "classes15.dex",
-          "classes2.dex",
-          "classes5.dex"
-        ]
-      },
-      "ranked_position": {
-        "occurrences_in_dex": 1,
-        "dex_files": [
-          "classes2.dex"
-        ]
-      },
-      "netego_type": {
-        "occurrences_in_dex": 5,
-        "dex_files": [
-          "classes2.dex",
-          "classes3.dex",
-          "classes5.dex",
-          "classes6.dex",
-          "classes7.dex"
-        ]
-      },
-      "feed_items": {
-        "occurrences_in_dex": 6,
-        "dex_files": [
-          "classes.dex",
-          "classes11.dex",
-          "classes12.dex",
-          "classes15.dex",
-          "classes16.dex",
-          "classes5.dex"
-        ]
-      },
-      "media_or_ad": {
-        "occurrences_in_dex": 8,
-        "dex_files": [
-          "classes.dex",
-          "classes11.dex",
-          "classes15.dex",
-          "classes2.dex",
-          "classes22.dex",
-          "classes3.dex",
-          "classes4.dex",
-          "classes6.dex"
-        ]
-      },
-      "suggested_users": {
-        "occurrences_in_dex": 9,
-        "dex_files": [
-          "classes.dex",
-          "classes10.dex",
-          "classes11.dex",
-          "classes15.dex",
-          "classes19.dex",
-          "classes2.dex",
-          "classes4.dex",
-          "classes5.dex",
-          "classes7.dex"
-        ]
-      }
+      "reels_tray": true,
+      "is_sponsored": true,
+      "ranked_position": true,
+      "netego_type": true,
+      "feed_items": true,
+      "media_or_ad": true,
+      "suggested_users": true,
+      "xdt_api__v1__feed__timeline__connection": true,
+      "xdt_api__v1__feed__reels_tray": true
     },
-    "anchors_missing": [
-      "xdt_api__v1__feed__timeline__connection",
-      "xdt_api__v1__feed__reels_tray"
-    ],
-    "integrity_score": 77.78
+    "anchors_missing": [],
+    "integrity_score": 100.0
   }
 }

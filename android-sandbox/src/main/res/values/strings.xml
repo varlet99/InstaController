@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">InstaController</string>
+    <string name="hud_title">⚡ InstaController HUD</string>
+    <string name="ads_blocked_format">🚫 Pubs bloquées : %d</string>
+    <string name="stories_sorted_format">🔄 Stories triées : %d</string>
+    <string name="simulate_button">🧪 Tester Simulation Locale</string>
+    <string name="add_favorite_hint">Ajouter @username</string>
+    <string name="add_button">Ajouter</string>
+    <string name="reload_button">Recharger</string>
+</resources>

@@ -1,0 +1,101 @@
+{
+  "status": "ok",
+  "tray": [
+    {
+      "id": "story_seen_david",
+      "ranked_position": 0,
+      "seen": 1710000000,
+      "latest_reel_media": 1710000000,
+      "user": {
+        "pk": "201",
+        "username": "david_seen",
+        "friendship_status": {
+          "following": true,
+          "is_bestie": false
+        }
+      },
+      "items": [
+        {
+          "id": "item_david_1",
+          "caption": { "text": "Déjà vu hier soir" }
+        }
+      ]
+    },
+    {
+      "id": "story_ad_sponsor",
+      "ranked_position": 1,
+      "is_sponsored": true,
+      "ad_id": "ad_story_443",
+      "user": {
+        "pk": "901",
+        "username": "sponsored_brand"
+      }
+    },
+    {
+      "id": "story_active_bob",
+      "ranked_position": 2,
+      "seen": 0,
+      "latest_reel_media": 1710001000,
+      "user": {
+        "pk": "202",
+        "username": "bob_active",
+        "friendship_status": {
+          "following": true,
+          "is_bestie": false
+        }
+      },
+      "items": [
+        {
+          "id": "item_bob_1",
+          "caption": { "text": "Super concert ce soir !" }
+        }
+      ]
+    },
+    {
+      "id": "story_bestie_alice",
+      "ranked_position": 3,
+      "seen": 0,
+      "latest_reel_media": 1710000500,
+      "user": {
+        "pk": "203",
+        "username": "alice_favorite",
+        "friendship_status": {
+          "following": true,
+          "is_bestie": true
+        }
+      },
+      "items": [
+        {
+          "id": "item_alice_1",
+          "caption": { "text": "Mon meilleur souvenir d'enfance" }
+        }
+      ]
+    },
+    {
+      "id": "netego_tray_item",
+      "ranked_position": 4,
+      "netego_type": "stories_netego",
+      "injected": true
+    },
+    {
+      "id": "story_secondary_zoe",
+      "ranked_position": 5,
+      "seen": 0,
+      "latest_reel_media": 1710000100,
+      "user": {
+        "pk": "204",
+        "username": "zoe_secondary",
+        "friendship_status": {
+          "following": true,
+          "is_bestie": false
+        }
+      },
+      "items": [
+        {
+          "id": "item_zoe_1",
+          "caption": { "text": "Petite photo du ciel" }
+        }
+      ]
+    }
+  ]
+}

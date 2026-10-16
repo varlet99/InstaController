@@ -46,7 +46,7 @@ clang -dynamiclib -arch arm64 \
     -miphoneos-version-min=14.0 \
     -O2 -fobjc-arc \
     -install_name "@rpath/InstaController.dylib" \
-    -framework Foundation -framework CoreFoundation -framework WebKit \
+    -framework Foundation -framework CoreFoundation -framework Security -framework WebKit \
     -I"${SCRIPT_DIR}" \
     "${SCRIPT_DIR}/InstaControllerFilter.m" \
     "${SCRIPT_DIR}/Tweak.m" \

@@ -1,18 +1,20 @@
 //
 //  Tweak.m
-//  InstaController iOS Runtime Hook (v3.5 - Clean ipapatch + Lazy Init + No FirstRun Modal Freeze)
+//  InstaController iOS Runtime Hook (v3.6 - Fix SCIManager cleanCache Sandbox Destruction & Keychain Fallback)
 //
 //  Interception chirurgicale ultra-légère :
-//  - Aucun swizzling intrusif sur NSDictionary / NSString / NSError (délégué à zxPluginsInject / ipapatch)
-//  - Pré-initialisation de SCInstaFirstRun et hide_ads dans NSUserDefaults pour éviter le blocage
-//    de la fenêtre principale par CepheiPrefs (HBListController) dans didFinishLaunchingWithOptions: sur iOS 18
-//  - Lazy Initialization (délai de 3.5s au démarrage avant d'activer le filtre NSJSONSerialization)
-//  - Garde anti-récursion thread-local stricte (__thread BOOL) + Pré-filtrage C (memmem)
+//  - Neutralisation de +[SCIManager cleanCache] qui supprimait les dossiers Library/Caches et tmp/
+//    pendant didFinishLaunchingWithOptions: (causant l'écran gris au démarrage sur iOS 18)
+//  - Restauration automatique des répertoires Library/Caches et tmp/ s'ils ont été détruits
+//  - Vérification de secours de keychainAccessGroup via LSBundleProxy
+//  - Pré-initialisation de SCInstaFirstRun et hide_ads dans NSUserDefaults
+//  - Lazy Initialization (délai de 3.5s) + Garde anti-récursion (__thread BOOL) + Pré-filtrage C (memmem)
 //
 
 #import <Foundation/Foundation.h>
 #import <WebKit/WebKit.h>
 #import <objc/runtime.h>
+#import <dlfcn.h>
 #import <string.h>
 #import "InstaControllerFilter.h"
 
@@ -43,6 +45,12 @@ static void SwizzleInstanceMethod(Class cls, SEL origSel, SEL newSel) {
     } else {
         method_exchangeImplementations(origMethod, newMethod);
     }
+}
+
+#pragma mark - Neutralisation de +[SCIManager cleanCache]
+
+static void ic_noop_cleanCache(id self, SEL _cmd) {
+    NSLog(@"[InstaController-iOS] +[SCIManager cleanCache] neutralisé (préservation de Library/Caches et tmp).");
 }
 
 #pragma mark - NSJSONSerialization Hook (Lazy Init + Garde Anti-Récursion + Memmem)
@@ -143,16 +151,60 @@ static void SwizzleInstanceMethod(Class cls, SEL origSel, SEL newSel) {
 __attribute__((constructor))
 static void initInstaController(void) {
     NSLog(@"==================================================");
-    NSLog(@"[InstaController-iOS] Dylib chargée (v3.5 - Clean ipapatch + Lazy Init)");
+    NSLog(@"[InstaController-iOS] Dylib chargée (v3.6 - Fix Sandbox Caches & Keychain)");
     NSLog(@"==================================================");
 
     NSString *bundleId = [[NSBundle mainBundle] bundleIdentifier];
     BOOL isNativeInstagram = [bundleId containsString:@"instagram"] || [bundleId containsString:@"burbn"];
 
     if (isNativeInstagram) {
-        // Pré-initialise SCInstaFirstRun et les options anti-pub pour empêcher SCInsta d'ouvrir
-        // de manière synchrone la modale CepheiPrefs (HBListController) pendant didFinishLaunchingWithOptions:,
-        // ce qui fige la fenêtre principale en gris-noir sur iOS 18.
+        // 1. Restauration immédiate des dossiers Library/Caches et tmp/ (si supprimés par SCIManager cleanCache)
+        NSFileManager *fm = [NSFileManager defaultManager];
+        NSString *tmpPath = NSTemporaryDirectory();
+        if (tmpPath.length > 0 && ![fm fileExistsAtPath:tmpPath]) {
+            [fm createDirectoryAtPath:tmpPath withIntermediateDirectories:YES attributes:nil error:nil];
+        }
+        NSArray *cachePaths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
+        if (cachePaths.count > 0) {
+            NSString *cacheDir = cachePaths.firstObject;
+            if (cacheDir.length > 0 && ![fm fileExistsAtPath:cacheDir]) {
+                [fm createDirectoryAtPath:cacheDir withIntermediateDirectories:YES attributes:nil error:nil];
+            }
+        }
+
+        // 2. Neutralisation runtime de +[SCIManager cleanCache]
+        Class sciManagerCls = objc_getClass("SCIManager");
+        if (sciManagerCls) {
+            Method cleanMethod = class_getClassMethod(sciManagerCls, @selector(cleanCache));
+            if (cleanMethod) {
+                method_setImplementation(cleanMethod, (IMP)ic_noop_cleanCache);
+            }
+        }
+
+        // 3. Vérification de secours de keychainAccessGroup dans SCInsta.dylib via LSBundleProxy
+        NSString * __strong *scKeychainGroupPtr = (NSString * __strong *)dlsym(RTLD_DEFAULT, "keychainAccessGroup");
+        if (scKeychainGroupPtr && (!*scKeychainGroupPtr || [*scKeychainGroupPtr length] == 0)) {
+            Class lsClass = objc_getClass("LSBundleProxy");
+            if (lsClass && [lsClass respondsToSelector:@selector(bundleProxyForCurrentProcess)]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+                id proxy = [lsClass performSelector:@selector(bundleProxyForCurrentProcess)];
+#pragma clang diagnostic pop
+                if (proxy) {
+                    NSDictionary *ent = [proxy valueForKey:@"entitlements"];
+                    if ([ent isKindOfClass:[NSDictionary class]]) {
+                        NSString *appId = ent[@"application-identifier"];
+                        if ([appId isKindOfClass:[NSString class]] && appId.length > 0) {
+                            *scKeychainGroupPtr = [appId copy];
+                            NSLog(@"[InstaController-iOS] keychainAccessGroup restauré via LSBundleProxy : %@", *scKeychainGroupPtr);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. Pré-initialise SCInstaFirstRun et les options anti-pub pour empêcher SCInsta d'ouvrir
+        //    de manière synchrone la modale CepheiPrefs (HBListController) pendant didFinishLaunchingWithOptions:
         NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
         if (![defaults objectForKey:@"SCInstaFirstRun"]) {
             [defaults setObject:@"v0.4.0 (dev)" forKey:@"SCInstaFirstRun"];

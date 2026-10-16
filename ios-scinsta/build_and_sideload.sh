@@ -103,10 +103,14 @@ if [ -n "${TARGET_IPA}" ] && [ -f "${TARGET_IPA}" ]; then
     echo "  -> Bundle détecté : ${APP_NAME} (Binaire principal : ${EXE_NAME})"
     mkdir -p "${APP_DIR}/Frameworks"
     
-    # 1. Intégration optionnelle de SCInsta.dylib officiel si présent
-    if [ -f "${SCRIPT_DIR}/SCInsta.dylib" ]; then
-        echo "  -> [SCInsta] Mise à jour de SCInsta.dylib officiel (v1.1.1) dans Frameworks/..."
+    # 1. Préservation ou intégration de SCInsta.dylib (avec SideloadFix / FBKeychainItemController)
+    if [ -f "${APP_DIR}/Frameworks/SCInsta.dylib" ]; then
+        echo "  -> [SCInsta] SCInsta.dylib (avec SideloadFix Keychain) déjà présent dans Frameworks/."
+    elif [ -f "${SCRIPT_DIR}/SCInsta.dylib" ]; then
+        echo "  -> [SCInsta] Copie de SCInsta.dylib (SideloadFix) dans Frameworks/..."
         cp "${SCRIPT_DIR}/SCInsta.dylib" "${APP_DIR}/Frameworks/SCInsta.dylib"
+    fi
+    if [ -f "${APP_DIR}/Frameworks/SCInsta.dylib" ]; then
         ldid -S "${APP_DIR}/Frameworks/SCInsta.dylib"
         if ! otool -L "${EXE_PATH}" | grep -q "SCInsta.dylib"; then
             insert_dylib --inplace --all-yes "@rpath/SCInsta.dylib" "${EXE_PATH}"

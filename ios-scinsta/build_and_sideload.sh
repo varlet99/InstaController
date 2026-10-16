@@ -103,14 +103,32 @@ if [ -n "${TARGET_IPA}" ] && [ -f "${TARGET_IPA}" ]; then
     echo "  -> Bundle détecté : ${APP_NAME} (Binaire principal : ${EXE_NAME})"
     mkdir -p "${APP_DIR}/Frameworks"
     
-    # 1. Préservation ou intégration de SCInsta.dylib (avec SideloadFix / FBKeychainItemController)
+    # 1. Préservation ou intégration de SCInsta.dylib
     if [ -f "${APP_DIR}/Frameworks/SCInsta.dylib" ]; then
-        echo "  -> [SCInsta] SCInsta.dylib (avec SideloadFix Keychain) déjà présent dans Frameworks/."
+        echo "  -> [SCInsta] SCInsta.dylib détecté dans Frameworks/."
     elif [ -f "${SCRIPT_DIR}/SCInsta.dylib" ]; then
-        echo "  -> [SCInsta] Copie de SCInsta.dylib (SideloadFix) dans Frameworks/..."
+        echo "  -> [SCInsta] Copie de SCInsta.dylib dans Frameworks/..."
         cp "${SCRIPT_DIR}/SCInsta.dylib" "${APP_DIR}/Frameworks/SCInsta.dylib"
     fi
     if [ -f "${APP_DIR}/Frameworks/SCInsta.dylib" ]; then
+        # Neutralisation de l'ancien constructeur SideloadFix (__logosLocalCtor_77583633 @ 0x14480)
+        # remplacé par zxPluginsInject.dylib (ipapatch, conformément à SoCuul/SCInsta PR #182)
+        python3 - "${APP_DIR}/Frameworks/SCInsta.dylib" << 'EOF'
+import sys, struct
+path = sys.argv[1]
+with open(path, "rb") as f:
+    data = bytearray(f.read())
+magic = struct.unpack(">I", data[:4])[0]
+base = struct.unpack(">I", data[16:20])[0] if magic == 0xcafebabe else 0
+target = base + 0x14480
+if target + 4 <= len(data):
+    ins = struct.unpack("<I", data[target:target+4])[0]
+    if ins == 0xd101c3ff or ins == 0xd65f03c0:
+        struct.pack_into("<I", data, target, 0xd65f03c0) # ret
+        with open(path, "wb") as f:
+            f.write(data)
+        print("  -> [SCInsta] Ancien SideloadFix neutralisé au profit de ipapatch (zxPluginsInject.dylib).")
+EOF
         ldid -S "${APP_DIR}/Frameworks/SCInsta.dylib"
         if ! otool -L "${EXE_PATH}" | grep -q "SCInsta.dylib"; then
             insert_dylib --inplace --all-yes "@rpath/SCInsta.dylib" "${EXE_PATH}"
@@ -119,7 +137,20 @@ if [ -n "${TARGET_IPA}" ] && [ -f "${TARGET_IPA}" ]; then
         fi
     fi
 
-    # 2. Intégration de InstaController.dylib
+    # 2. Intégration de zxPluginsInject.dylib (ipapatch officiel SoCuul/SCInsta PR #182)
+    if [ -f "${SCRIPT_DIR}/zxPluginsInject.dylib" ]; then
+        echo "  -> [ipapatch] Injection de zxPluginsInject.dylib (correctif Keychain/AppGroup/CloudKit iOS 18)..."
+        cp "${SCRIPT_DIR}/zxPluginsInject.dylib" "${APP_DIR}/Frameworks/zxPluginsInject.dylib"
+        install_name_tool -id "@rpath/zxPluginsInject.dylib" "${APP_DIR}/Frameworks/zxPluginsInject.dylib" 2>/dev/null || true
+        ldid -S "${APP_DIR}/Frameworks/zxPluginsInject.dylib"
+        if ! otool -L "${EXE_PATH}" | grep -q "zxPluginsInject.dylib"; then
+            insert_dylib --inplace --weak --all-yes "@rpath/zxPluginsInject.dylib" "${EXE_PATH}"
+        else
+            echo "  -> [ipapatch] Déjà référencé dans ${EXE_NAME}."
+        fi
+    fi
+
+    # 3. Intégration de InstaController.dylib
     echo "  -> [InstaController] Injection de InstaController.dylib dans Frameworks/..."
     cp "${SCRIPT_DIR}/InstaController.dylib" "${APP_DIR}/Frameworks/InstaController.dylib"
     ldid -S "${APP_DIR}/Frameworks/InstaController.dylib"

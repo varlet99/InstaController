@@ -131,9 +131,13 @@ if [ -n "${TARGET_IPA}" ] && [ -f "${TARGET_IPA}" ]; then
         rm -rf "${APP_DIR}/PlugIns"
     fi
 
-    # 4. Signature des frameworks et bibliothèques
-    echo "  -> Signature des frameworks avec ldid..."
-    find "${APP_DIR}/Frameworks" -type f \( -name "*.dylib" -o -perm +111 \) -exec ldid -S {} + 2>/dev/null || true
+    # 4. Signature systématique de tous les binaires Mach-O dans Frameworks/
+    echo "  -> Signature de tous les frameworks et dylibs avec ldid..."
+    find "${APP_DIR}/Frameworks" -type f | while read -r f; do
+        if file "$f" | grep -q "Mach-O"; then
+            ldid -S "$f" 2>/dev/null || true
+        fi
+    done
     
     echo "  -> Re-signature du binaire Mach-O principal avec ldid..."
     ldid -S "${EXE_PATH}"
